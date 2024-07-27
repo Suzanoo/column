@@ -3,20 +3,26 @@ from plotly.subplots import make_subplots
 
 import pandas as pd
 
-from utils import display_table
 
-
-def calculate_rebar_positions(c, b, N):
+def calculate_rebar_positions(c, b, N, main_dia, travesre_dia):
     if N == 1:
         return [c + (b - 2 * c) / 2]
     elif N == 2:
-        return [c, b - c]
+        return [c + travesre_dia + main_dia / 2, b - c - travesre_dia - main_dia / 2]
     else:
-        positions = [c + i * (b - 2 * c) / (N - 1) for i in range(N)]
+        positions = [
+            c
+            + main_dia / 2
+            + travesre_dia
+            + i * (b - 2 * c - main_dia - 2 * travesre_dia) / (N - 1)
+            for i in range(N)
+        ]
         return positions
 
 
-def get_rebar_coordinates(b, h, c, main_dia, bottom_layers, top_layers):
+def get_rebar_coordinates(
+    b, d, c, main_dia, travesre_dia, bottom_layers, top_layers, middle_rebars
+):
     rebar_data = []
 
     # Calculate positions of bottom reinforcement layers
@@ -24,24 +30,42 @@ def get_rebar_coordinates(b, h, c, main_dia, bottom_layers, top_layers):
     y_bottom_layers = [c + (i + 0.5) * layer_spacing for i in range(len(bottom_layers))]
 
     for y, num_bars in zip(y_bottom_layers, bottom_layers):
-        x_positions = calculate_rebar_positions(c, b, num_bars)
+        x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
         for x in x_positions:
-            z = h - y
+            z = d - y
             rebar_data.append({"x": x, "y": y, "z": z})
 
     # Calculate positions of top reinforcement layers
-    y_top_layers = [h - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
+    y_top_layers = [d - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
 
     for y, num_bars in zip(y_top_layers, top_layers):
-        x_positions = calculate_rebar_positions(c, b, num_bars)
+        x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
         for x in x_positions:
-            z = h - y
+            z = d - y
             rebar_data.append({"x": x, "y": y, "z": z})
+
+    # Calculate positions of middle reinforcement layers
+    if middle_rebars > 0:
+        n = middle_rebars // 2
+        d_middle = min(y_top_layers) - max(y_bottom_layers)
+        s = d_middle / (n + 1)
+
+        for i in range(1, n + 1):
+            y_position = max(y_bottom_layers) + s * i
+            z = d - y_position
+            rebar_data.append(
+                {"x": c + travesre_dia + main_dia / 2, "y": y_position, "z": z}
+            )
+            rebar_data.append(
+                {"x": b - c - travesre_dia - main_dia / 2, "y": y_position, "z": z}
+            )
 
     return pd.DataFrame(rebar_data)
 
 
-def plot_rc_section(fig, b, d, c, travesre_dia, main_dia, bottom_layers, top_layers):
+def plot_rc_section(
+    fig, b, d, c, travesre_dia, main_dia, bottom_layers, top_layers, middle_rebars
+):
     # fig = go.Figure()
 
     # Draw the concrete section
@@ -58,10 +82,20 @@ def plot_rc_section(fig, b, d, c, travesre_dia, main_dia, bottom_layers, top_lay
     # Draw the concrete cover
     fig.add_shape(
         type="rect",
-        x0=c - main_dia / 2,
-        y0=c + main_dia / 2,
-        x1=b - c + main_dia / 2,
-        y1=d - c - main_dia / 2,
+        x0=c,
+        y0=c,
+        x1=b - c,
+        y1=d - c,
+        line=dict(color="red", width=2, dash="dot"),
+    )
+
+    # Draw the traverse
+    fig.add_shape(
+        type="rect",
+        x0=c + travesre_dia,
+        y0=c + travesre_dia,
+        x1=b - c - travesre_dia,
+        y1=d - c - travesre_dia,
         line=dict(color="red", width=2, dash="dot"),
     )
 
@@ -70,7 +104,7 @@ def plot_rc_section(fig, b, d, c, travesre_dia, main_dia, bottom_layers, top_lay
     y_bottom_layers = [c + (i + 0.5) * layer_spacing for i in range(len(bottom_layers))]
 
     for y, num_bars in zip(y_bottom_layers, bottom_layers):
-        x_positions = calculate_rebar_positions(c, b, num_bars)
+        x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
         for x in x_positions:
             fig.add_shape(
                 type="circle",
@@ -86,7 +120,7 @@ def plot_rc_section(fig, b, d, c, travesre_dia, main_dia, bottom_layers, top_lay
     y_top_layers = [d - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
 
     for y, num_bars in zip(y_top_layers, top_layers):
-        x_positions = calculate_rebar_positions(c, b, num_bars)
+        x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
         for x in x_positions:
             fig.add_shape(
                 type="circle",
@@ -94,6 +128,33 @@ def plot_rc_section(fig, b, d, c, travesre_dia, main_dia, bottom_layers, top_lay
                 y0=y - main_dia / 2,
                 x1=x + main_dia / 2,
                 y1=y + main_dia / 2,
+                line=dict(color="blue"),
+                fillcolor="blue",
+            )
+
+    # Calculate positions of middle reinforcement layers
+    if middle_rebars > 0:
+        n = middle_rebars // 2
+        d_middle = min(y_top_layers) - max(y_bottom_layers)
+        s = d_middle / (n + 1)
+
+        for i in range(1, n + 1):
+            y_position = max(y_bottom_layers) + s * i
+            fig.add_shape(
+                type="circle",
+                x0=c + travesre_dia,
+                y0=y_position - main_dia / 2,
+                x1=c + travesre_dia + main_dia,
+                y1=y_position + main_dia / 2,
+                line=dict(color="blue"),
+                fillcolor="blue",
+            )
+            fig.add_shape(
+                type="circle",
+                x0=b - c - travesre_dia - main_dia,
+                y0=y_position - main_dia / 2,
+                x1=b - c - travesre_dia,
+                y1=y_position + main_dia / 2,
                 line=dict(color="blue"),
                 fillcolor="blue",
             )
@@ -196,6 +257,7 @@ def create_plot(
     main_dia,
     bottom_layers,
     top_layers,
+    middle_rebars,
     x_ir_mux,
     y_ir_mux,
     x_ir_muy,
@@ -214,6 +276,7 @@ def create_plot(
         main_dia / 10,
         bottom_layers,
         top_layers,
+        middle_rebars,
     )
 
     ir_fig = plot_IR_diagram(x_ir_mux, y_ir_mux, x_ir_muy, y_ir_muy, Pu, Mux, Muy)
@@ -229,6 +292,7 @@ def create_html(
     main_dia,
     bottom_layers,
     top_layers,
+    middle_rebars,
     x_ir_mux,
     y_ir_mux,
     x_ir_muy,
@@ -246,6 +310,7 @@ def create_html(
         main_dia,
         bottom_layers,
         top_layers,
+        middle_rebars,
         x_ir_mux,
         y_ir_mux,
         x_ir_muy,
@@ -260,7 +325,7 @@ def create_html(
     ir_html = ir_fig.to_html(full_html=False, include_plotlyjs="cdn")
 
     # Combine both plots into one HTML file
-    with open("combined_plot.html", "w") as f:
+    with open("rectangle_plot.html", "w") as f:
         f.write(
             f"""
         <html>

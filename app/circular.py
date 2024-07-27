@@ -3,15 +3,17 @@ import pandas as pd
 
 
 from utils import *
-from plot_circular import IR_diagram_plot, plot_multiple_sections
+from plot_circular import IR_diagram_plot, plot_multiple_sections, create_html
 from PM import pure_compression, zero_tension, balance, pure_bending, pure_tension
 
 import plotly.graph_objects as go
 
 
-def information(dia, covering, main_dia, N):
-    # Calculate the inner diameter for the covering
-    inner_dia = dia - 2 * covering - main_dia
+def information(dia, covering, main_dia, traverse_dia, N):
+    # Calculate the inner diameter
+    inner_dia = dia - 2 * covering - main_dia - traverse_dia  # for main reinforcements
+    inner_dia2 = dia - 2 * covering  # for covering
+    inner_dia3 = dia - 2 * covering - 2 * traverse_dia  # for traverse
 
     # Create the solid circle for the column section
     theta = np.linspace(0, 2 * np.pi, 100)
@@ -19,8 +21,12 @@ def information(dia, covering, main_dia, N):
     y_outer = (dia / 2) * np.sin(theta)
 
     # Create the dotted circle for the covering
-    x_inner = (inner_dia / 2) * np.cos(theta)
-    y_inner = (inner_dia / 2) * np.sin(theta)
+    x_inner = (inner_dia2 / 2) * np.cos(theta)
+    y_inner = (inner_dia2 / 2) * np.sin(theta)
+
+    # Create the dotted circle for the traverse
+    x_traverse = (inner_dia3 / 2) * np.cos(theta)
+    y_traverse = (inner_dia3 / 2) * np.sin(theta)
 
     # Create the positions for the rebars
     theta_rebar = np.linspace(0.5 * np.pi, 2.5 * np.pi, N, endpoint=False)
@@ -44,6 +50,8 @@ def information(dia, covering, main_dia, N):
         "y_outer": y_outer,
         "x_inner": x_inner,
         "y_inner": y_inner,
+        "x_traverse": x_traverse,
+        "y_traverse": y_traverse,
         "x_rebar": x_rebar,
         "y_rebar": y_rebar,
         "rebar_data": rebar_data,
@@ -57,9 +65,9 @@ def main():
     dia = 60  # Diameter of the column in cm
 
     main_dia = 28  # mm
-    N = 6  # Number of rebars
-    traverse_dia = 9  # mm
-    covering = 5  # Covering in cm
+    N = 8  # Number of rebars
+    traverse_dia = 12  # mm
+    covering = 4.5  # Covering in cm
 
     fc = 24
     fy = 390  # MPa
@@ -73,14 +81,14 @@ def main():
     Ag, Ast, An = calculate_areas(dia, main_dia / 10, N)  # cm2
 
     # Get the DataFrame
-    data = information(dia, covering, main_dia / 10, N)
+    data = information(dia, covering, main_dia / 10, traverse_dia / 10, N)
     df_rebars = pd.DataFrame(data["rebar_data"])
     display_table(df_rebars)
 
     d, d2 = effective_depth(main_dia / 10, main_dia / 10, 0, dia, covering)  # cm
 
     # Init
-    nuetral_axis = []
+    neutral_axis = []
     x_ir = []  # 𝜙Mn
     y_ir = []  # 𝜙Pn
 
@@ -96,7 +104,7 @@ def main():
 
     y_ir.append(abs(𝜙Pn))
     x_ir.append(𝜙Mn)
-    nuetral_axis.append(c)
+    neutral_axis.append(c)
     # display_table(df)
     print(f"Zero Tension : 𝜙Pn = {𝜙Pn:.2f} kN, 𝜙Mn = {𝜙Mn:.2f} kN-m")
 
@@ -106,7 +114,7 @@ def main():
 
     y_ir.append(abs(𝜙Pn))
     x_ir.append(𝜙Mn)
-    nuetral_axis.append(c)
+    neutral_axis.append(c)
     # display_table(df)
     print(f"Balance : 𝜙Pn = {𝜙Pn:.2f} kN, 𝜙Mn = {𝜙Mn:.2f} kN-m")
 
@@ -116,7 +124,7 @@ def main():
 
     y_ir.append(0)
     x_ir.append(𝜙Mn)
-    nuetral_axis.append(c)
+    neutral_axis.append(c)
     display_table(df)
     print(f"Pure Bending : 𝜙Pn = {𝜙Pn:.2f} kN, 𝜙Mn = {𝜙Mn:.2f} kN-m")
 
@@ -135,13 +143,7 @@ def main():
 
     # ----------------------------------------------------------------
     # Plot section
-    # Number of rows and columns for subplots
-    rows = 2
-    cols = 3
-    plot_multiple_sections(dia, main_dia / 10, N, nuetral_axis, data, rows, cols)
-
-    # Plot IR-Diagram
-    IR_diagram_plot(x_ir, y_ir, Pu, Mu)
+    create_html(dia, main_dia / 10, N, data, x_ir, y_ir, Pu, Mu)
 
     # ----------------------------------------------------------------
 
