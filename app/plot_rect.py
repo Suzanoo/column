@@ -330,7 +330,7 @@ def create_html(
             f"""
         <html>
             <head>
-                <title>Combined Plot</title>
+                <title>Rectangle Plot</title>
                 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
             </head>
             <body>

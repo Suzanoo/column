@@ -22,7 +22,7 @@ def circular_section(
     fig = go.Figure()
 
     # Determine colors for rebars based on their position relative to the NA
-    rebar_colors = ["red" if y > c else "black" for y in y_rebar]
+    rebar_colors = ["red" if y > c else "blue" for y in y_rebar]
 
     # Add the solid circle for the column
     fig.add_trace(
@@ -43,7 +43,7 @@ def circular_section(
             x=x_inner,
             y=y_inner,
             mode="lines",
-            line=dict(color="blue"),
+            line=dict(color="red", width=2, dash="dot"),
             name="Covering",
         ),
     )
@@ -54,7 +54,7 @@ def circular_section(
             x=x_traverse,
             y=y_traverse,
             mode="lines",
-            line=dict(color="blue"),
+            line=dict(color="red", width=2, dash="dot"),
             name="Covering",
         ),
     )
@@ -63,7 +63,7 @@ def circular_section(
     fig.add_trace(
         go.Scatter(
             x=[-dia / 2, dia / 2],
-            y=[0, 0],
+            y=[c - c, c - c],
             mode="lines",
             line=dict(color="green", dash="dot"),
             name="Neutral Axis",
@@ -99,6 +99,100 @@ def circular_section(
     return fig
 
 
+# Plot IR-Diagram
+def IR_diagram_plot(x_ir, y_ir, Pu, Mu):
+    # Create the plot
+    fig = go.Figure()
+
+    # Add the scatter plot
+    fig.add_trace(
+        go.Scatter(
+            x=x_ir,
+            y=y_ir,
+            mode="markers+lines",
+            name="[𝜙Mn, 𝜙Pn]",
+            marker=dict(size=12),
+        ),
+    )
+
+    # Add the additional point (P, M)
+    fig.add_trace(
+        go.Scatter(
+            x=[Mu],
+            y=[Pu],
+            mode="markers",
+            name="Mu, Pu",
+            marker=dict(size=12, color="red"),  # Larger and different color marker
+        ),
+    )
+
+    # Update the layout
+    fig.update_layout(
+        title="IR Diagram",
+        xaxis_title="𝜙Mn, kN-m",
+        yaxis_title="𝜙Pn, kN",
+        legend_title="Legend",
+        width=800,
+        height=800,
+        # xaxis=dict(range=[0, max(x) * 1.1]),  # Ensure x-axis starts at 0
+        # yaxis=dict(range=[0, max(y) * 1.1]),  # Ensure y-axis starts at 0
+    )
+
+    return fig
+
+
+def create_plot(c, dia, main_dia, N, data, x_ir, y_ir, Pu, Mu):
+
+    section_fig = circular_section(
+        dia,
+        main_dia,
+        N,
+        c,
+        data["x_outer"],
+        data["y_outer"],
+        data["x_inner"],
+        data["y_inner"],
+        data["x_traverse"],
+        data["y_traverse"],
+        data["x_rebar"],
+        data["y_rebar"],
+    )
+
+    ir_fig = IR_diagram_plot(x_ir, y_ir, Pu, Mu)
+
+    return section_fig, ir_fig
+
+
+def create_html(c, dia, main_dia, N, data, x_ir, y_ir, Pu, Mu):
+
+    section_fig, ir_fig = create_plot(c, dia, main_dia, N, data, x_ir, y_ir, Pu, Mu)
+
+    # Save each plot to a string
+    section_html = section_fig.to_html(full_html=False, include_plotlyjs="cdn")
+    ir_html = ir_fig.to_html(full_html=False, include_plotlyjs="cdn")
+
+    # Combine both plots into one HTML file
+    with open("circular_plot.html", "w") as f:
+        f.write(
+            f"""
+        <html>
+            <head>
+                <title>Crcular_plot Plot</title>
+                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            </head>
+            <body>
+                <h1>Section Plot</h1>
+                {section_html}
+                <h1>IR Diagram</h1>
+                {ir_html}
+            </body>
+        </html>
+        """
+        )
+
+
+# Displat section in each state
+"""
 # Plot multi circular sections as subplot
 def circular_section_plot(
     fig,
@@ -196,49 +290,6 @@ def circular_section_plot(
 
     return fig
 
-
-# Plot IR-Diagram
-def IR_diagram_plot(x_ir, y_ir, Pu, Mu):
-    # Create the plot
-    fig = go.Figure()
-
-    # Add the scatter plot
-    fig.add_trace(
-        go.Scatter(
-            x=x_ir,
-            y=y_ir,
-            mode="markers+lines",
-            name="[𝜙Mn, 𝜙Pn]",
-            marker=dict(size=12),
-        ),
-    )
-
-    # Add the additional point (P, M)
-    fig.add_trace(
-        go.Scatter(
-            x=[Mu],
-            y=[Pu],
-            mode="markers",
-            name="Mu, Pu",
-            marker=dict(size=12, color="red"),  # Larger and different color marker
-        ),
-    )
-
-    # Update the layout
-    fig.update_layout(
-        title="IR Diagram",
-        xaxis_title="𝜙Mn, kN-m",
-        yaxis_title="𝜙Pn, kN",
-        legend_title="Legend",
-        width=800,
-        height=800,
-        # xaxis=dict(range=[0, max(x) * 1.1]),  # Ensure x-axis starts at 0
-        # yaxis=dict(range=[0, max(y) * 1.1]),  # Ensure y-axis starts at 0
-    )
-
-    return fig
-
-
 # Multiple plot circular section with subplot
 def plot_multiple_sections(dia, main_dia, N, neutral_axis, data, rows, cols):
     # Initialize the subplot figure
@@ -283,51 +334,4 @@ def plot_multiple_sections(dia, main_dia, N, neutral_axis, data, rows, cols):
     return fig
 
 
-def create_plot(dia, main_dia, N, data, x_ir, y_ir, Pu, Mu):
-
-    section_fig = circular_section(
-        dia,
-        main_dia,
-        N,
-        dia / 2,
-        data["x_outer"],
-        data["y_outer"],
-        data["x_inner"],
-        data["y_inner"],
-        data["x_traverse"],
-        data["y_traverse"],
-        data["x_rebar"],
-        data["y_rebar"],
-    )
-
-    ir_fig = IR_diagram_plot(x_ir, y_ir, Pu, Mu)
-
-    return section_fig, ir_fig
-
-
-def create_html(dia, main_dia, N, data, x_ir, y_ir, Pu, Mu):
-
-    section_fig, ir_fig = create_plot(dia, main_dia, N, data, x_ir, y_ir, Pu, Mu)
-
-    # Save each plot to a string
-    section_html = section_fig.to_html(full_html=False, include_plotlyjs="cdn")
-    ir_html = ir_fig.to_html(full_html=False, include_plotlyjs="cdn")
-
-    # Combine both plots into one HTML file
-    with open("circular_plot.html", "w") as f:
-        f.write(
-            f"""
-        <html>
-            <head>
-                <title>Combined Plot</title>
-                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-            </head>
-            <body>
-                <h1>Section Plot</h1>
-                {section_html}
-                <h1>IR Diagram</h1>
-                {ir_html}
-            </body>
-        </html>
-        """
-        )
+"""

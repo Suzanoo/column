@@ -1,12 +1,23 @@
 import numpy as np
 import pandas as pd
 
+from absl import app, flags, logging
+from absl.flags import FLAGS
 
-from utils import *
-from plot_circular import IR_diagram_plot, plot_multiple_sections, create_html
+
+from utils import beta_one, effective_depth, calculate_areas, display_table
+from plot_circular import create_html
 from PM import pure_compression, zero_tension, balance, pure_bending, pure_tension
 
-import plotly.graph_objects as go
+
+flags.DEFINE_float("fc", 24, "240ksc, MPa")
+flags.DEFINE_integer("fy", 395, "SD40 main bar, MPa")
+flags.DEFINE_integer("fv", 235, "SR24 traverse, MPa")
+flags.DEFINE_float("c", 4, "concrete covering, cm")
+
+flags.DEFINE_float("Pu", 0, "Axial force, kN")
+flags.DEFINE_float("Mux", 0, "Mux, kN-m")
+flags.DEFINE_float("Muy", 0, "Mux, kN-m")
 
 
 def information(dia, covering, main_dia, traverse_dia, N):
@@ -60,75 +71,79 @@ def information(dia, covering, main_dia, traverse_dia, N):
     return context
 
 
-def main():
-    # Input parameters
-    dia = 60  # Diameter of the column in cm
-
-    main_dia = 28  # mm
-    N = 8  # Number of rebars
-    traverse_dia = 12  # mm
-    covering = 4.5  # Covering in cm
-
-    fc = 24
-    fy = 390  # MPa
+def main(argv):
+    fc = FLAGS.fc
+    fy = FLAGS.fy  # MPa
     Es = 200000  # MPa
 
-    Pu = 2500  # kN
-    Mu = 54  # kN
+    # Input parameters
+    while True:
+        dia = int(input("Section diameter in cm! : "))  # Diameter of the column in cm
+        main_dia = int(input("Main reinforcement in mm! : "))  # mm
+        N = int(input("Numbers of rebar! : "))  # Number of rebars
+        traverse_dia = int(input("Traverse reinforcement in mm! : "))  # mm
+
+        ask = input("Define again! Y|N :").upper()
+        if ask == "Y":
+            pass
+        else:
+            print("Goodbye!")
+            break
+
+    covering = FLAGS.c  # Covering in cm
+
+    # Load
+    Pu = FLAGS.Pu  # kN
+    Mux = FLAGS.Mux  # kN
+    Muy = FLAGS.Muy  # kN
+    Mu = np.sqrt(Mux * Mux + Muy * Muy)
 
     # ----------------------------------------------------------------
     beta_1 = beta_one(fc)
     Ag, Ast, An = calculate_areas(dia, main_dia / 10, N)  # cm2
 
-    # Get the DataFrame
+    # Get rebars coordinates
     data = information(dia, covering, main_dia / 10, traverse_dia / 10, N)
     df_rebars = pd.DataFrame(data["rebar_data"])
     display_table(df_rebars)
 
     d, d2 = effective_depth(main_dia / 10, main_dia / 10, 0, dia, covering)  # cm
 
-    # Init
+    # Initialized
     neutral_axis = []
     x_ir = []  # 𝜙Mn
     y_ir = []  # 𝜙Pn
 
-    ## Pure Compression
+    ## 1-Pure Compression
     𝜙Pn = pure_compression(fc, fy, Ast, An)
     y_ir.append(abs(𝜙Pn))
     x_ir.append(0)
-    # print(f"Pure Compression : 𝜙Pn = {𝜙Pn:.2f} kN")
 
-    ## Zero Tension
+    ## 2-Zero Tension
     df = df_rebars.copy()
     𝜙Pn, 𝜙Mn, c = zero_tension(beta_1, fc, fy, Es, dia, main_dia, d, df)
 
     y_ir.append(abs(𝜙Pn))
     x_ir.append(𝜙Mn)
     neutral_axis.append(c)
-    # display_table(df)
-    print(f"Zero Tension : 𝜙Pn = {𝜙Pn:.2f} kN, 𝜙Mn = {𝜙Mn:.2f} kN-m")
 
-    ## Balance
+    ## 3-Balance
     df = df_rebars.copy()
     𝜙Pn, 𝜙Mn, c = balance(beta_1, fc, fy, Es, dia, main_dia, d, df)
 
     y_ir.append(abs(𝜙Pn))
     x_ir.append(𝜙Mn)
     neutral_axis.append(c)
-    # display_table(df)
-    print(f"Balance : 𝜙Pn = {𝜙Pn:.2f} kN, 𝜙Mn = {𝜙Mn:.2f} kN-m")
 
-    ## Pure Bending
+    ## 4-Pure Bending
     df = df_rebars.copy()
     𝜙Pn, 𝜙Mn, c = pure_bending(beta_1, fc, fy, Es, dia, main_dia, d, d2, df)
 
     y_ir.append(0)
     x_ir.append(𝜙Mn)
     neutral_axis.append(c)
-    display_table(df)
-    print(f"Pure Bending : 𝜙Pn = {𝜙Pn:.2f} kN, 𝜙Mn = {𝜙Mn:.2f} kN-m")
 
-    ## Pure Tension
+    ## 5-Pure Tension
     # # Area of one rebar (Ast_single)
     # radius_rebar = main_dia / 2
     # Ast_single = np.pi * (radius_rebar**2)
@@ -136,14 +151,30 @@ def main():
     # # Total area of the rebars (Ast)
     # Ast = Ast_single * N
     𝜙Pn = pure_tension(fy, Ast)
-    print(f"Pure Tension : 𝜙Tn = {-𝜙Pn:.2f} kN")
 
     y_ir.append(𝜙Pn)
     x_ir.append(0)
 
+    df = pd.DataFrame(
+        {
+            "|||": [
+                "Pure Compression",
+                "Zero Tension",
+                "Balance",
+                "Pure Bending",
+                "Pure Tension",
+            ],
+            "𝜙Pn, kN": y_ir,
+            "𝜙Mn, kN-m": x_ir,
+        }
+    )
+    display_table(df)
+
+    print("Please open circular_plot.html in your project folder")
+
     # ----------------------------------------------------------------
     # Plot section
-    create_html(dia, main_dia / 10, N, data, x_ir, y_ir, Pu, Mu)
+    create_html(dia / 2, dia, main_dia / 10, N, data, x_ir, y_ir, Pu, Mu)
 
     # ----------------------------------------------------------------
 
@@ -151,6 +182,6 @@ def main():
 # Call the main function
 if __name__ == "__main__":
     print("Hello, world!")
-    main()
+    app.run(main)
 
-# python app/circular.py
+# python app/circular.py  --Pu=2500 --Mux=120 --Muy=25

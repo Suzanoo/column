@@ -2,6 +2,10 @@ import numpy as np
 from tabulate import tabulate
 
 
+def convert_input_to_list(input_string):
+    return list(map(int, input_string.split()))
+
+
 def beta_one(fc):
     """Calculate beta1 based on concrete compressive strength."""
     if fc <= 30:  # N/mm2(MPa)
@@ -60,7 +64,7 @@ def sum_separate(df, column_name):
     )
 
 
-# Concrete and rebars area in circular section
+# Compute concrete and rebars area in circular section
 def calculate_areas(dia, rebar_dia, N):
     # Gross section area (Ag) of the circular column
     radius = dia / 2
@@ -79,6 +83,7 @@ def calculate_areas(dia, rebar_dia, N):
     return Ag, Ast, An
 
 
+# Compute concrete and rebars area in rectangle section
 def calculate_areas_in_rect(b, h, rebar_dia, N):
     # Gross section area (Ag) of the circular column
     Ag = b * h
@@ -96,7 +101,7 @@ def calculate_areas_in_rect(b, h, rebar_dia, N):
     return Ag, Ast, An
 
 
-# Segment area aboce line
+# Segment area above line
 def segment_area_above_line(dia, distance_from_top):
     R = dia / 2  # Radius of the column
     h = R - distance_from_top  # Distance from center of the column to the line

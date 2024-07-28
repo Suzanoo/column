@@ -1,11 +1,36 @@
 import pandas as pd
 
+from absl import app, flags, logging
+from absl.flags import FLAGS
+
 from plot_rect import (
     get_rebar_coordinates,
     create_html,
 )
-from utils import beta_one, effective_depth, calculate_areas_in_rect, display_table
+from utils import (
+    convert_input_to_list,
+    beta_one,
+    effective_depth,
+    calculate_areas_in_rect,
+    display_table,
+)
 from PM import pure_compression, zero_tension, balance, pure_bending, pure_tension
+
+## FLAGS definition
+# https://stackoverflow.com/questions/69471891/clarification-regarding-abseil-library-flags
+
+flags.DEFINE_float("fc", 23.5, "240ksc, MPa")
+flags.DEFINE_integer("fy", 395, "SD40 main bar, MPa")
+flags.DEFINE_integer("fv", 235, "SR24 traverse, MPa")
+flags.DEFINE_float("c", 4, "concrete covering, cm")
+
+flags.DEFINE_integer("main", 12, "main reinforcement, mm")
+flags.DEFINE_integer("trav", 6, "traverse reinforcement, mm")
+flags.DEFINE_float("b", 0, "width, cm")
+flags.DEFINE_float("h", 0, "depth, cm")
+flags.DEFINE_float("Pu", 0, "Axial force, kN")
+flags.DEFINE_float("Mux", 0, "Mux, kN-m")
+flags.DEFINE_float("Muy", 0, "Mux, kN-m")
 
 
 # ----------------------------------------------------------------
@@ -96,7 +121,6 @@ def y_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
 
     Ag, Ast, An = calculate_areas_in_rect(b, h, main_dia / 10, N)  # cm2
 
-    b, h = h, b
     d, d2 = effective_depth(
         main_dia / 10, main_dia / 10, traverse_dia / 10, h, covering
     )  # cm
@@ -173,25 +197,40 @@ def y_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
 # ----------------------------------------------------------------
 ## Main function
 # ----------------------------------------------------------------
-def main():
-    b = 50  # width in cm
-    h = 50  # depth in cm
-    covering = 4.5  # covering in cm
-
-    main_dia = 20  # mm
-    traverse_dia = 9  # mm
-    bottom_layers = [3]
-    top_layers = [3]
-    middle_rebars = 2
-
-    fc = 24
-    fy = 390  # MPa
+def main(argv):
+    fc = FLAGS.fc
+    fy = FLAGS.fy  # MPa
     Es = 200000  # MPa
 
-    Pu = 2500  # kN
-    Mux = 54  # kN
-    Muy = 0  # kN
+    b = FLAGS.b  # width in cm
+    h = FLAGS.h  # depth in cm
+    covering = FLAGS.c  # covering in cm
 
+    Pu = FLAGS.Pu  # kN
+    Mux = FLAGS.Mux  # kN
+    Muy = FLAGS.Muy  # kN
+
+    main_dia = FLAGS.main  # mm
+    traverse_dia = FLAGS.trav  # mm
+
+    while True:
+
+        bottom_layers = convert_input_to_list(
+            input("Define list of bottom reinforcement for each layer, ex. 3 2 2 : ")
+        )
+        top_layers = convert_input_to_list(
+            input("Define list of bottom reinforcement for each layer, ex. 3 2 : ")
+        )
+        middle_rebars = int(input("Define remaining middle rebars ex.4 : "))
+
+        ask = input("Define again! Y|N :").upper()
+        if ask == "Y":
+            pass
+        else:
+            print("Goodbye!")
+            break
+
+    # Total rebars
     N = sum(bottom_layers + top_layers)
 
     # Get the rebar coordinates
@@ -206,6 +245,7 @@ def main():
         middle_rebars,
     )
 
+    # Display rebar coordinates
     display_table(df_rebars)
 
     # Coordinate for IR-diagrams for Mux
@@ -240,13 +280,16 @@ def main():
         Muy,
     )
 
+    print("Please open rectangle_plot.html in your project folder")
+
 
 # Call the main function
 if __name__ == "__main__":
     print("Hello, world!")
-    main()
+    app.run(main)
 
 
 """
-python app/rect.py
+python app/rect.py --b=30 --h=50 --Pu=2500 --Mux=120 --Muy=25
+
 """
