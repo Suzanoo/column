@@ -219,7 +219,7 @@ def main(argv):
             input("Define list of bottom reinforcement for each layer, ex. 3 2 2 : ")
         )
         top_layers = convert_input_to_list(
-            input("Define list of bottom reinforcement for each layer, ex. 3 2 : ")
+            input("Define list of top reinforcement for each layer, ex. 3 2 : ")
         )
         middle_rebars = int(input("Define remaining middle rebars ex.4 : "))
 
@@ -290,6 +290,6 @@ if __name__ == "__main__":
 
 
 """
-python app/rect.py --b=30 --h=50 --Pu=2500 --Mux=120 --Muy=25
+python app/rect.py --b=40 --h=60 --main=25 --trav=9 --Pu=2500 --Mux=120 --Muy=45
 
 """

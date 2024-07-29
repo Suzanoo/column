@@ -43,7 +43,7 @@ def circular_section(
             x=x_inner,
             y=y_inner,
             mode="lines",
-            line=dict(color="red", width=2, dash="dot"),
+            line=dict(color="green", width=2),
             name="Covering",
         ),
     )
@@ -54,7 +54,7 @@ def circular_section(
             x=x_traverse,
             y=y_traverse,
             mode="lines",
-            line=dict(color="red", width=2, dash="dot"),
+            line=dict(color="green", width=2),
             name="Covering",
         ),
     )

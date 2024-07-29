@@ -86,7 +86,7 @@ def plot_rc_section(
         y0=c,
         x1=b - c,
         y1=d - c,
-        line=dict(color="red", width=2, dash="dot"),
+        line=dict(color="green", width=2),
     )
 
     # Draw the traverse
@@ -96,7 +96,7 @@ def plot_rc_section(
         y0=c + travesre_dia,
         x1=b - c - travesre_dia,
         y1=d - c - travesre_dia,
-        line=dict(color="red", width=2, dash="dot"),
+        line=dict(color="green", width=2),
     )
 
     # Calculate positions of bottom reinforcement layers

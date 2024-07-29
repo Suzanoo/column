@@ -1,12 +1,11 @@
 ## **RC column design use Python**
-This CMD app use [ChatGPT](https://openai.com/chatgpt/) to generate the code
-You can see the prompt from this link below
+This CMD app use [ChatGPT](https://openai.com/chatgpt/) to generate the code.
+See the prompt from link below.
 - [Rectangular column](https://chatgpt.com/share/a419775f-74f5-4ca7-a8ea-4867382fca70)
 - [Circular column](https://chatgpt.com/share/3aa7a0c3-014c-481d-ad4c-3c2ac2ed22ec)
 
 
-The app compute and display IR diagram for a column section depend on your trials.
-So, you can use it in column design when you have loads on section.
+The app compute and display IR diagram of column section.
 ### Instructions
 
 1. Install Python, Git, Anaconda, and VSCode
@@ -49,4 +48,4 @@ python app/circular.py  --Pu=2500 --Mux=120 --Muy=25
 Look at FLAGS definition for alternative
 ```
 
-Give me comment at: highwaynumber12@gmail.com
+Feedback : highwaynumber12@gmail.com
