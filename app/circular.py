@@ -5,14 +5,15 @@ from absl import app, flags, logging
 from absl.flags import FLAGS
 
 
-from utils import beta_one, effective_depth, calculate_areas, display_table
+from utils import get_valid_integer, calculate_areas, display_table
 from plot_circular import create_html
-from PM import pure_compression, zero_tension, balance, pure_bending, pure_tension
+from column import Column
 
 
 flags.DEFINE_float("fc", 24, "240ksc, MPa")
 flags.DEFINE_integer("fy", 395, "SD40 main bar, MPa")
 flags.DEFINE_integer("fv", 235, "SR24 traverse, MPa")
+flags.DEFINE_integer("Es", 200000, "Young's modulus ,MPa")
 flags.DEFINE_float("c", 4, "concrete covering, cm")
 
 flags.DEFINE_float("Pu", 0, "Axial force, kN")
@@ -20,16 +21,18 @@ flags.DEFINE_float("Mux", 0, "Mux, kN-m")
 flags.DEFINE_float("Muy", 0, "Mux, kN-m")
 
 
-def information(dia, covering, main_dia, traverse_dia, N):
+def information(section_dia, covering, main_dia, traverse_dia, N):
     # Calculate the inner diameter
-    inner_dia = dia - 2 * covering - main_dia - traverse_dia  # for main reinforcements
-    inner_dia2 = dia - 2 * covering  # for covering
-    inner_dia3 = dia - 2 * covering - 2 * traverse_dia  # for traverse
+    inner_dia = (
+        section_dia - 2 * covering - main_dia - traverse_dia
+    )  # for main reinforcements
+    inner_dia2 = section_dia - 2 * covering  # for covering
+    inner_dia3 = section_dia - 2 * covering - 2 * traverse_dia  # for traverse
 
     # Create the solid circle for the column section
     theta = np.linspace(0, 2 * np.pi, 100)
-    x_outer = (dia / 2) * np.cos(theta)
-    y_outer = (dia / 2) * np.sin(theta)
+    x_outer = (section_dia / 2) * np.cos(theta)
+    y_outer = (section_dia / 2) * np.sin(theta)
 
     # Create the dotted circle for the covering
     x_inner = (inner_dia2 / 2) * np.cos(theta)
@@ -46,7 +49,7 @@ def information(dia, covering, main_dia, traverse_dia, N):
     y_rebar = (inner_dia / 2) * np.sin(theta_rebar)
 
     # Calculate distance from top of the column to each rebar
-    distance_from_top = (dia / 2) - y_rebar
+    distance_from_top = (section_dia / 2) - y_rebar
 
     # Create a DataFrame for the rebars
     rebar_data = {
@@ -72,22 +75,18 @@ def information(dia, covering, main_dia, traverse_dia, N):
 
 
 def main(argv):
-    fc = FLAGS.fc
-    fy = FLAGS.fy  # MPa
-    Es = 200000  # MPa
-
+    print("====================== Column Design ======================")
     # Input parameters
     while True:
-        dia = int(input("Section diameter in cm! : "))  # Diameter of the column in cm
-        main_dia = int(input("Main reinforcement in mm! : "))  # mm
-        N = int(input("Numbers of rebar! : "))  # Number of rebars
-        traverse_dia = int(input("Traverse reinforcement in mm! : "))  # mm
-
+        section_dia = get_valid_integer("Define section diameter in cm : ")
+        main_dia = get_valid_integer("Main reinforcement diameter in mm : ")
+        N = get_valid_integer("Numbers of Main reinforcement : ")
+        traverse_dia = get_valid_integer("Traverse reinforcement in mm : ")
         ask = input("Define again! Y|N :").upper()
         if ask == "Y":
             pass
         else:
-            print("Goodbye!")
+            print("Good Luck!")
             break
 
     covering = FLAGS.c  # Covering in cm
@@ -99,15 +98,19 @@ def main(argv):
     Mu = np.sqrt(Mux * Mux + Muy * Muy)
 
     # ----------------------------------------------------------------
-    beta_1 = beta_one(fc)
-    Ag, Ast, An = calculate_areas(dia, main_dia / 10, N)  # cm2
+    # Calculalte concrete and rebars area
+    Ag, Ast, An = calculate_areas(section_dia, main_dia / 10, N)  # cm2
+
+    # Instanciated
+    column = Column(
+        fc=FLAGS.fc, fv=FLAGS.fv, fy=FLAGS.fy, Es=FLAGS.Es, b=section_dia, h=section_dia
+    )
+    column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
 
     # Get rebars coordinates
-    data = information(dia, covering, main_dia / 10, traverse_dia / 10, N)
+    data = information(section_dia, covering, main_dia / 10, traverse_dia / 10, N)
     df_rebars = pd.DataFrame(data["rebar_data"])
     display_table(df_rebars)
-
-    d, d2 = effective_depth(main_dia / 10, main_dia / 10, 0, dia, covering)  # cm
 
     # Initialized
     neutral_axis = []
@@ -115,13 +118,13 @@ def main(argv):
     y_ir = []  # 𝜙Pn
 
     ## 1-Pure Compression
-    𝜙Pn = pure_compression(fc, fy, Ast, An)
+    𝜙Pn, 𝜙Pn_max = column.pure_compression(Ast, An)
     y_ir.append(abs(𝜙Pn))
     x_ir.append(0)
 
     ## 2-Zero Tension
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = zero_tension(beta_1, fc, fy, Es, dia, main_dia, d, df)
+    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df)
 
     y_ir.append(abs(𝜙Pn))
     x_ir.append(𝜙Mn)
@@ -129,7 +132,7 @@ def main(argv):
 
     ## 3-Balance
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = balance(beta_1, fc, fy, Es, dia, main_dia, d, df)
+    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df)
 
     y_ir.append(abs(𝜙Pn))
     x_ir.append(𝜙Mn)
@@ -137,7 +140,7 @@ def main(argv):
 
     ## 4-Pure Bending
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = pure_bending(beta_1, fc, fy, Es, dia, main_dia, d, d2, df)
+    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df)
 
     y_ir.append(0)
     x_ir.append(𝜙Mn)
@@ -150,7 +153,7 @@ def main(argv):
 
     # # Total area of the rebars (Ast)
     # Ast = Ast_single * N
-    𝜙Pn = pure_tension(fy, Ast)
+    𝜙Pn = column.pure_tension(Ast)
 
     y_ir.append(𝜙Pn)
     x_ir.append(0)
@@ -174,7 +177,10 @@ def main(argv):
 
     # ----------------------------------------------------------------
     # Plot section
-    create_html(dia / 2, dia, main_dia / 10, N, data, x_ir, y_ir, Pu, Mu)
+
+    create_html(
+        section_dia / 2, section_dia, main_dia / 10, N, data, x_ir, y_ir, Pu, Mu
+    )
 
     # ----------------------------------------------------------------
 

@@ -2,40 +2,17 @@ import numpy as np
 from tabulate import tabulate
 
 
+def get_valid_integer(prompt):
+    while True:
+        user_input = input(prompt)
+        if user_input.isdigit():
+            return int(user_input)
+        else:
+            print("Invalid input. Please enter a valid number.")
+
+
 def convert_input_to_list(input_string):
     return list(map(int, input_string.split()))
-
-
-def beta_one(fc):
-    """Calculate beta1 based on concrete compressive strength."""
-    if fc <= 30:  # N/mm2(MPa)
-        β1 = 0.85
-    elif 30 < fc < 55:  # N/mm2
-        β1 = 0.85 - 0.05 * (fc - 30) / 7
-    else:
-        β1 = 0.65
-    return β1
-
-
-# Percent Reinforcement
-def percent_reinforcment(Ast, Ag):
-    ρg = Ast / Ag
-
-    if 0.01 < ρg < 0.08:
-        print(f"ρg = 0.01 < {ρg:.4f} < 0.08  OK ")
-        return ρg
-    else:
-        print(f"ρg = {ρg:.4f} out of range [0.01, 0.08]--> Used 0.01")
-        ρg = 0.01
-        return ρg
-
-
-# Effective depth
-def effective_depth(𝜙1, 𝜙2, 𝜙_traverse, h, covering=4.5):  # cm
-    d2 = covering + 𝜙_traverse + 𝜙2 / 2
-    d = h - covering - 𝜙_traverse - 𝜙1 / 2
-    print(f"d = {d:.2f} cm, d' = {d2:.2f} cm")
-    return d, d2
 
 
 # Display  table
@@ -51,7 +28,7 @@ def display_table(df):
     )
 
 
-# Sum values in a column(+ and -)
+# Sum values in a df column(+ and -)
 def sum_separate(df, column_name):
     # Sum of positive values in column 'F'
     positive_sum = df[df[column_name] > 0][column_name].sum()

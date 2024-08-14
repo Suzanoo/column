@@ -14,7 +14,13 @@ from utils import (
     calculate_areas_in_rect,
     display_table,
 )
-from PM import pure_compression, zero_tension, balance, pure_bending, pure_tension
+from app.column import (
+    pure_compression,
+    zero_tension,
+    balance,
+    pure_bending,
+    pure_tension,
+)
 
 ## FLAGS definition
 # https://stackoverflow.com/questions/69471891/clarification-regarding-abseil-library-flags
@@ -51,7 +57,7 @@ def x_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
     )  # cm
 
     ## 1-Pure Compression
-    𝜙Pn = pure_compression(fc, fy, Ast, An)
+    𝜙Pn, 𝜙Pn_max = pure_compression(fc, fy, Ast, An)
     y_ir_mux.append(abs(𝜙Pn))
     x_ir_mux.append(0)
 

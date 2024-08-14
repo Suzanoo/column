@@ -115,7 +115,7 @@ def IR_diagram_plot(x_ir, y_ir, Pu, Mu):
         ),
     )
 
-    # Add the additional point (P, M)
+    # Add the additional point (Pu, Mu)
     fig.add_trace(
         go.Scatter(
             x=[Mu],
