@@ -44,6 +44,9 @@ def x_axis(main_dia, N, df_rebars, column):
 
     Ag, Ast, An = calculate_areas_in_rect(FLAGS.b, FLAGS.h, main_dia / 10, N)  # cm2
 
+    print(f"\n[INFO] Rebars coodinates(x, y) and distance from top edge(z), cm ")
+    display_table(df_rebars)
+
     ## 1-Pure Compression
     𝜙Pn, 𝜙Pn_max = column.pure_compression(Ast, An)
     y_ir_mux.append(abs(𝜙Pn))
@@ -81,7 +84,7 @@ def x_axis(main_dia, N, df_rebars, column):
 
     df = pd.DataFrame(
         {
-            "|||": [
+            "Status": [
                 "Pure Compression",
                 "Zero Tension",
                 "Balance",
@@ -92,6 +95,8 @@ def x_axis(main_dia, N, df_rebars, column):
             "𝜙Mn, kN-m": x_ir_mux,
         }
     )
+    print(f"\n[INFO] IR-Diagram coordinates : ")
+    print(f"𝜙Pn_max = {abs(𝜙Pn_max):.2f} kN")
     display_table(df)
 
     return x_ir_mux, y_ir_mux
@@ -121,10 +126,11 @@ def y_axis(main_dia, N, df_rebars, column):
     # Calculate distance from top
     df_swapped["z"] = FLAGS.h - df_swapped["y"]
 
+    print(f"\n[INFO] Rebars coodinates(x, y) and distance from top edge(z), cm ")
     display_table(df_swapped)
 
     ## 1-Pure Compression
-    𝜙Pn, 𝜙Pnmax = column.pure_compression(Ast, An)
+    𝜙Pn, 𝜙Pn_max = column.pure_compression(Ast, An)
     y_ir_muy.append(abs(𝜙Pn))
     x_ir_muy.append(0)
 
@@ -160,7 +166,7 @@ def y_axis(main_dia, N, df_rebars, column):
 
     df = pd.DataFrame(
         {
-            "|||": [
+            "Status": [
                 "Pure Compression",
                 "Zero Tension",
                 "Balance",
@@ -171,6 +177,8 @@ def y_axis(main_dia, N, df_rebars, column):
             "𝜙Mn, kN-m": x_ir_muy,
         }
     )
+    print(f"\n[INFO] IR-Diagram coordinates : ")
+    print(f"𝜙Pn_max = {abs(𝜙Pn_max):.2f} kN")
     display_table(df)
 
     return x_ir_muy, y_ir_muy
@@ -213,24 +221,23 @@ def create_ir_diagram(main_dia, traverse_dia):
         middle_rebars,
     )
 
-    # Display rebar coordinates
-    display_table(df_rebars)
-
     # Calculalte concrete and rebars area
     Ag, Ast, An = calculate_areas_in_rect(FLAGS.b, FLAGS.h, main_dia / 10, N)  # cm2
 
-    print("X-X Axis")
+    print(f"\nX-X Axis")
     # Instanciated
-    column = Column(FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es, FLAGS.b, FLAGS.h)
+    column = Column(
+        FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es, FLAGS.b, FLAGS.h, stirrup="tie"
+    )
     column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
 
     # Coordinate for IR-diagrams for Mux
     x_ir_mux, y_ir_mux = x_axis(main_dia, N, df_rebars, column)
 
-    print("Y-Y Axis")
+    print(f"\nY-Y Axis")
     # Instanciated
     column = Column(
-        FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es, FLAGS.h, FLAGS.b
+        FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es, FLAGS.h, FLAGS.b, stirrup="tie"
     )  # Swapp b, h
     column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
 
@@ -259,11 +266,20 @@ def create_ir_diagram(main_dia, traverse_dia):
 
 
 def main(argv):
+    print("====================== Rectangular Column Design ======================")
+    print("[INFO] Section properties : ")
+    print(
+        f"fc: {FLAGS.fc} MPa, fv: {FLAGS.fv} MPa, fy: {FLAGS.fy} MPa, Es: {FLAGS.Es} MP"
+    )
+    print(f"width: {FLAGS.b} cm, depth: {FLAGS.h} cm")
+    print(f"Pu: {FLAGS.Pu} kN, Mux: {FLAGS.Mux} kN-m, Muy: {FLAGS.Muy} kN-m")
+
     n = 1
     section_fig = []
     ir_fig = []
+
     while True:
-        print(f"============== Section {n} ==============")
+        print(f"\n============== Section {n} ==============")
         main_dia = get_valid_integer("Main rebar diameter in mm : ")
         traverse_dia = get_valid_integer("Traverse rebar diameter in mm : ")
 
@@ -272,13 +288,11 @@ def main(argv):
         section_fig.append(section)
         ir_fig.append(ir)
 
-        ask = input("Any section? : Y|N ").upper()
+        ask = input("Any section? , Y|N : ").upper()
         if ask == "N":
             break
         else:
             n += 1
-
- 
 
     create_html(section_fig, ir_fig)
 

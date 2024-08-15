@@ -163,7 +163,7 @@ def plot_rc_section(
     fig.update_xaxes(range=[-5, b + 5], scaleratio=1, zeroline=False)
     fig.update_yaxes(range=[-5, d + 5], scaleratio=1, zeroline=False)
     fig.update_layout(
-        title="RC Beam/Column Section",
+        title="RC Beam Section",
         xaxis_title="Width (cm)",
         yaxis_title="Depth (cm)",
         height=600,
@@ -206,8 +206,8 @@ def IR_diagram(fig, row, col, x, y, Pu, Mu, title):
     fig.update_layout(
         title=title,
         legend_title="Legend",
-        width=800,
-        height=800 * 2 / 3,
+        width=1200,
+        height=900 * 2 / 3,
     )
 
     return fig
@@ -304,11 +304,11 @@ def create_html(section_fig, ir_fig):
         # Add the row for this pair of figures
         html_content += f"""
         <div style="display: flex; justify-content: space-around; margin-bottom: 30px;">
-            <div style="width: 48%;">
+            <div style="width: 25%;">
                 <h1>Section Plot {i + 1}</h1>
                 {section_html}
             </div>
-            <div style="width: 48%;">
+            <div style="width: 60%;">
                 <h1>IR Diagram {i + 1}</h1>
                 {ir_html}
             </div>

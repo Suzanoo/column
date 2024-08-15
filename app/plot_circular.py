@@ -84,12 +84,12 @@ def circular_section(
     )
 
     fig.update_layout(
-        title="Column Sections",
+        title=f"{N}-Dia{main_dia*10:.0f}mm",
         xaxis_title="X (cm)",
         yaxis_title="Y (cm)",
         showlegend=False,  # To avoid duplicate legends
-        width=400,
-        height=400,
+        width=500,
+        height=500,
     )
 
     # Update layout to ensure correct aspect ratio
@@ -132,8 +132,8 @@ def IR_diagram_plot(x_ir, y_ir, Pu, Mu):
         xaxis_title="𝜙Mn, kN-m",
         yaxis_title="𝜙Pn, kN",
         legend_title="Legend",
-        width=800,
-        height=800,
+        width=500,
+        height=500,
         # xaxis=dict(range=[0, max(x) * 1.1]),  # Ensure x-axis starts at 0
         # yaxis=dict(range=[0, max(y) * 1.1]),  # Ensure y-axis starts at 0
     )

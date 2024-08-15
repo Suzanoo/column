@@ -74,19 +74,7 @@ def information(section_dia, covering, main_dia, traverse_dia, N):
     return context
 
 
-def create_ir_diagram():
-    # Input parameters
-    while True:
-        section_dia = get_valid_integer("Define section diameter in cm : ")
-        main_dia = get_valid_integer("Main reinforcement diameter in mm : ")
-        N = get_valid_integer("Numbers of Main reinforcement : ")
-        traverse_dia = get_valid_integer("Traverse reinforcement in mm : ")
-        ask = input("Define again! Y|N :").upper()
-        if ask == "Y":
-            pass
-        else:
-            print("Good Luck!")
-            break
+def create_ir_diagram(section_dia, main_dia, N, traverse_dia, stirrup_type):
 
     covering = FLAGS.c  # Covering in cm
 
@@ -102,13 +90,21 @@ def create_ir_diagram():
 
     # Instanciated
     column = Column(
-        fc=FLAGS.fc, fv=FLAGS.fv, fy=FLAGS.fy, Es=FLAGS.Es, b=section_dia, h=section_dia
+        fc=FLAGS.fc,
+        fv=FLAGS.fv,
+        fy=FLAGS.fy,
+        Es=FLAGS.Es,
+        b=section_dia,
+        h=section_dia,
+        stirrup=stirrup_type,
     )
     column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
 
     # Get rebars coordinates
     data = information(section_dia, covering, main_dia / 10, traverse_dia / 10, N)
     df_rebars = pd.DataFrame(data["rebar_data"])
+
+    print(f"\n[INFO] Rebars coodinates(x, y) and distance from top edge(z), cm ")
     display_table(df_rebars)
 
     # Initialized
@@ -159,7 +155,7 @@ def create_ir_diagram():
 
     df = pd.DataFrame(
         {
-            "|||": [
+            "Status": [
                 "Pure Compression",
                 "Zero Tension",
                 "Balance",
@@ -170,6 +166,9 @@ def create_ir_diagram():
             "𝜙Mn, kN-m": x_ir,
         }
     )
+
+    print(f"\n[INFO] IR-Diagram coordinates : ")
+    print(f"𝜙Pn_max = {abs(𝜙Pn_max):.2f} kN")
     display_table(df)
 
     section_fig, ir_fig = create_plot(
@@ -180,14 +179,43 @@ def create_ir_diagram():
 
 
 def main(argv):
-    print("====================== Column Design ======================")
+    print("====================== Circular Column Design ======================")
+    print("[INFO] Section properties : ")
+    print(
+        f"fc: {FLAGS.fc} MPa, fv: {FLAGS.fv} MPa, fy: {FLAGS.fy} MPa, Es: {FLAGS.Es} MP"
+    )
+    print(f"Pu: {FLAGS.Pu} kN, Mux: {FLAGS.Mux} kN-m, Muy: {FLAGS.Muy} kN-m")
+
     n = 1
     section_fig = []
     ir_fig = []
-    while True:
-        print(f"============== Section {n} ==============")
 
-        section, ir = create_ir_diagram()
+    while True:
+        print(f"\n============== Section {n} ==============")
+
+        # Input parameters
+        while True:
+            section_dia = get_valid_integer("Define section diameter in cm : ")
+            main_dia = get_valid_integer("Main reinforcement diameter in mm : ")
+            N = get_valid_integer("Numbers of Main reinforcement : ")
+            traverse_dia = get_valid_integer("Traverse reinforcement in mm : ")
+
+            stirrup = input("Stirrup is 'tie' or 'spiral' select  T|S : ").upper()
+            if stirrup in ["T", "t"]:
+                stirrup_type = "tie"
+            else:
+                stirrup_type = "spiral"
+
+            ask = input("Confirm! Y|N :").upper()
+            if ask == "Y":
+                print("Good Luck!")
+                break
+            else:
+                pass
+
+        section, ir = create_ir_diagram(
+            section_dia, main_dia, N, traverse_dia, stirrup_type
+        )
 
         section_fig.append(section)
         ir_fig.append(ir)
@@ -208,4 +236,4 @@ if __name__ == "__main__":
     print("Hello, world!")
     app.run(main)
 
-# python app/circular.py  --Pu=2500 --Mux=120 --Muy=25
+# python app/circular.py  --Pu=2500 --Mux=125 --Muy=45

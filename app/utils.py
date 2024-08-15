@@ -22,7 +22,7 @@ def display_table(df):
             df,
             headers=df.columns,
             floatfmt=".2f",
-            showindex=True,
+            showindex=False,
             tablefmt="psql",
         )
     )

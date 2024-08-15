@@ -3,7 +3,7 @@ from utils import sum_separate, segment_area_above_line
 
 
 class Column:
-    def __init__(self, fc, fv, fy, Es, b, h):
+    def __init__(self, fc, fv, fy, Es, b, h, stirrup):
         """
         b : column width in rect-section, section diameter in circular section
         h : column height in rect-section, section diameter in circular section
@@ -14,6 +14,7 @@ class Column:
         self.Es = Es
         self.b = b
         self.h = h
+        self.stirrup = stirrup
 
     def beta_one(self):
         if self.fc <= 30:  # N/mm2(MPa)
@@ -41,11 +42,11 @@ class Column:
         self.ρg = ρg
 
     # Safety factor, 𝜙c
-    def 𝜙x(self, c, tie=True):
+    def 𝜙x(self, c):
         """
         c : distance from top to nuetral axis
         """
-        if tie == True:
+        if self.stirrup == "tie":
             self.𝜙c = 0.65 + 0.25 * ((1 / c / self.d) - 5 / 3)  # tie
         else:
             self.𝜙c = 0.75 + 0.15 * ((1 / c / self.d) - 5 / 3)  # spiral
@@ -114,7 +115,7 @@ class Column:
         else:
             compression_area = segment_area_above_line(self.b, a) * 100  # mm2
 
-        self.𝜙x(c, tie)  # set tie stirrup as defalt
+        self.𝜙x(c)  # set tie stirrup as defalt
 
         # Calculate stress of each rebars
         df = self.stress(df, c, text1)
@@ -147,7 +148,6 @@ class Column:
         P0 = -(0.85 * self.fc * An + self.fy * Ast) * 1e-3  # kN
         𝜙Pn = 0.65 * P0  # kN
         𝜙Pn_max = 0.85 * P0  # kN
-        print(f"𝜙Pn_max = {𝜙Pn_max:.2f} kN")
 
         return 𝜙Pn, 𝜙Pn_max
 
