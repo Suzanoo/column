@@ -1,26 +1,20 @@
 import pandas as pd
 
-from absl import app, flags, logging
+from absl import app, flags
 from absl.flags import FLAGS
 
 from plot_rect import (
     get_rebar_coordinates,
+    create_plot,
     create_html,
 )
 from utils import (
+    get_valid_integer,
     convert_input_to_list,
-    beta_one,
-    effective_depth,
-    calculate_areas_in_rect,
     display_table,
+    calculate_areas_in_rect,
 )
-from app.column import (
-    pure_compression,
-    zero_tension,
-    balance,
-    pure_bending,
-    pure_tension,
-)
+from column import Column
 
 ## FLAGS definition
 # https://stackoverflow.com/questions/69471891/clarification-regarding-abseil-library-flags
@@ -28,10 +22,11 @@ from app.column import (
 flags.DEFINE_float("fc", 23.5, "240ksc, MPa")
 flags.DEFINE_integer("fy", 395, "SD40 main bar, MPa")
 flags.DEFINE_integer("fv", 235, "SR24 traverse, MPa")
+flags.DEFINE_integer("Es", 200000, "Young's modulus ,MPa")
 flags.DEFINE_float("c", 4, "concrete covering, cm")
 
-flags.DEFINE_integer("main", 12, "main reinforcement, mm")
-flags.DEFINE_integer("trav", 6, "traverse reinforcement, mm")
+# flags.DEFINE_integer("main", 12, "main reinforcement, mm")
+# flags.DEFINE_integer("trav", 6, "traverse reinforcement, mm")
 flags.DEFINE_float("b", 0, "width, cm")
 flags.DEFINE_float("h", 0, "depth, cm")
 flags.DEFINE_float("Pu", 0, "Axial force, kN")
@@ -42,28 +37,21 @@ flags.DEFINE_float("Muy", 0, "Mux, kN-m")
 # ----------------------------------------------------------------
 ## X-X Axis
 # ----------------------------------------------------------------
-def x_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
-    print(f"\nX-X Axis")
-
-    beta_1 = beta_one(fc)
+def x_axis(main_dia, N, df_rebars, column):
     nuetral_axis = []
     x_ir_mux = []  # 𝜙Mn
     y_ir_mux = []  # 𝜙Pn
 
-    Ag, Ast, An = calculate_areas_in_rect(b, h, main_dia / 10, N)  # cm2
-
-    d, d2 = effective_depth(
-        main_dia / 10, main_dia / 10, traverse_dia / 10, h, covering
-    )  # cm
+    Ag, Ast, An = calculate_areas_in_rect(FLAGS.b, FLAGS.h, main_dia / 10, N)  # cm2
 
     ## 1-Pure Compression
-    𝜙Pn, 𝜙Pn_max = pure_compression(fc, fy, Ast, An)
+    𝜙Pn, 𝜙Pn_max = column.pure_compression(Ast, An)
     y_ir_mux.append(abs(𝜙Pn))
     x_ir_mux.append(0)
 
     ## 2-Zero Tension
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = zero_tension(beta_1, fc, fy, Es, h, main_dia, d, df, b, rect=True)
+    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df, rect=True)
 
     y_ir_mux.append(abs(𝜙Pn))
     x_ir_mux.append(𝜙Mn)
@@ -71,7 +59,7 @@ def x_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
 
     ## 3-Balance
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = balance(beta_1, fc, fy, Es, h, main_dia, d, df, b, rect=True)
+    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df, rect=True)
 
     y_ir_mux.append(abs(𝜙Pn))
     x_ir_mux.append(𝜙Mn)
@@ -79,14 +67,14 @@ def x_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
 
     ## 4-Pure Bending
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = pure_bending(beta_1, fc, fy, Es, h, main_dia, d, d2, df, b, rect=True)
+    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df, rect=True)
 
     y_ir_mux.append(0)
     x_ir_mux.append(𝜙Mn)
     nuetral_axis.append(c)
 
     ## 5-Pure Tension
-    𝜙Pn = pure_tension(fy, Ast * 1e2)
+    𝜙Pn = column.pure_tension(Ast * 1e2)
 
     y_ir_mux.append(𝜙Pn)
     x_ir_mux.append(0)
@@ -112,24 +100,16 @@ def x_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
 # ----------------------------------------------------------------
 ## Y-Y Axis
 # ----------------------------------------------------------------
-def y_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
+def y_axis(main_dia, N, df_rebars, column):
     """
     With Y-Y axis
     we swapp b, h and calculate distance from top of rebar (z)
     """
-    print("Y-Y Axis")
-
-    beta_1 = beta_one(fc)
-
     nuetral_axis = []
     x_ir_muy = []  # 𝜙Mn
     y_ir_muy = []  # 𝜙Pn
 
-    Ag, Ast, An = calculate_areas_in_rect(b, h, main_dia / 10, N)  # cm2
-
-    d, d2 = effective_depth(
-        main_dia / 10, main_dia / 10, traverse_dia / 10, h, covering
-    )  # cm
+    Ag, Ast, An = calculate_areas_in_rect(FLAGS.b, FLAGS.h, main_dia / 10, N)  # cm2
 
     # Get the rebar coordinates
     # Create a new DataFrame with swapped 'x' and 'y' columns
@@ -139,20 +119,18 @@ def y_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
     df_swapped = df_swapped[["x", "y"]]
 
     # Calculate distance from top
-    df_swapped["z"] = h - df_swapped["y"]
+    df_swapped["z"] = FLAGS.h - df_swapped["y"]
 
     display_table(df_swapped)
 
     ## 1-Pure Compression
-    𝜙Pn = pure_compression(fc, fy, Ast, An)
+    𝜙Pn, 𝜙Pnmax = column.pure_compression(Ast, An)
     y_ir_muy.append(abs(𝜙Pn))
     x_ir_muy.append(0)
 
     ## 2-Zero Tension
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = zero_tension(
-        beta_1, fc, fy, Es, h, main_dia, d, df_swapped, b, rect=True
-    )
+    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df_swapped, rect=True)
 
     y_ir_muy.append(abs(𝜙Pn))
     x_ir_muy.append(𝜙Mn)
@@ -160,7 +138,7 @@ def y_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
 
     ## 3-Balance
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = balance(beta_1, fc, fy, Es, h, main_dia, d, df_swapped, b, rect=True)
+    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df_swapped, rect=True)
 
     y_ir_muy.append(abs(𝜙Pn))
     x_ir_muy.append(𝜙Mn)
@@ -168,16 +146,14 @@ def y_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
 
     ## 4-Pure Bending
     df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = pure_bending(
-        beta_1, fc, fy, Es, h, main_dia, d, d2, df_swapped, b, rect=True
-    )
+    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df_swapped, rect=True)
 
     y_ir_muy.append(0)
     x_ir_muy.append(𝜙Mn)
     nuetral_axis.append(c)
 
     ## 5-Pure Tension
-    𝜙Pn = pure_tension(fy, Ast * 1e2)
+    𝜙Pn = column.pure_tension(Ast * 1e2)
 
     y_ir_muy.append(𝜙Pn)
     x_ir_muy.append(0)
@@ -203,22 +179,8 @@ def y_axis(fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars):
 # ----------------------------------------------------------------
 ## Main function
 # ----------------------------------------------------------------
-def main(argv):
-    fc = FLAGS.fc
-    fy = FLAGS.fy  # MPa
-    Es = 200000  # MPa
-
-    b = FLAGS.b  # width in cm
-    h = FLAGS.h  # depth in cm
-    covering = FLAGS.c  # covering in cm
-
-    Pu = FLAGS.Pu  # kN
-    Mux = FLAGS.Mux  # kN
-    Muy = FLAGS.Muy  # kN
-
-    main_dia = FLAGS.main  # mm
-    traverse_dia = FLAGS.trav  # mm
-
+def create_ir_diagram(main_dia, traverse_dia):
+    # Lay rebars
     while True:
 
         bottom_layers = convert_input_to_list(
@@ -227,23 +189,23 @@ def main(argv):
         top_layers = convert_input_to_list(
             input("Define list of top reinforcement for each layer, ex. 3 2 : ")
         )
-        middle_rebars = int(input("Define remaining middle rebars ex.4 : "))
+        middle_rebars = get_valid_integer("Define middle rebars ex.4 : ")
 
-        ask = input("Define again! Y|N :").upper()
+        ask = input("Confirm! Y|N :").upper()
         if ask == "Y":
-            pass
-        else:
             print("Goodbye!")
             break
+        else:
+            pass
 
     # Total rebars
     N = sum(bottom_layers + top_layers)
 
     # Get the rebar coordinates
     df_rebars = get_rebar_coordinates(
-        b,
-        h,
-        covering,
+        FLAGS.b,
+        FLAGS.h,
+        FLAGS.c,
         main_dia / 10,
         traverse_dia / 10,
         bottom_layers,
@@ -254,24 +216,31 @@ def main(argv):
     # Display rebar coordinates
     display_table(df_rebars)
 
+    # Calculalte concrete and rebars area
+    Ag, Ast, An = calculate_areas_in_rect(FLAGS.b, FLAGS.h, main_dia / 10, N)  # cm2
+
+    print("X-X Axis")
+    # Instanciated
+    column = Column(FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es, FLAGS.b, FLAGS.h)
+    column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
+
     # Coordinate for IR-diagrams for Mux
-    x_ir_mux, y_ir_mux = x_axis(
-        fc, fy, Es, b, h, main_dia, traverse_dia, covering, N, df_rebars
-    )
+    x_ir_mux, y_ir_mux = x_axis(main_dia, N, df_rebars, column)
+
+    print("Y-Y Axis")
+    # Instanciated
+    column = Column(
+        FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es, FLAGS.h, FLAGS.b
+    )  # Swapp b, h
+    column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
 
     # Coordinate for IR-diagrams for Muy
-    # Swapp b, h
-    by, hy = h, b
+    x_ir_muy, y_ir_muy = y_axis(main_dia, N, df_rebars, column)
 
-    x_ir_muy, y_ir_muy = y_axis(
-        fc, fy, Es, by, hy, main_dia, traverse_dia, covering, N, df_rebars
-    )
-
-    # Create html file to display ploting
-    create_html(
-        b,
-        h,
-        covering,
+    section_fig, ir_fig = create_plot(
+        FLAGS.b,
+        FLAGS.h,
+        FLAGS.c,
         traverse_dia,
         main_dia,
         bottom_layers,
@@ -281,12 +250,37 @@ def main(argv):
         y_ir_mux,
         x_ir_muy,
         y_ir_muy,
-        Pu,
-        Mux,
-        Muy,
+        FLAGS.Pu,
+        FLAGS.Mux,
+        FLAGS.Muy,
     )
 
-    print("Please open rectangle_plot.html in your project folder")
+    return section_fig, ir_fig
+
+
+def main(argv):
+    n = 1
+    section_fig = []
+    ir_fig = []
+    while True:
+        print(f"============== Section {n} ==============")
+        main_dia = get_valid_integer("Main rebar diameter in mm : ")
+        traverse_dia = get_valid_integer("Traverse rebar diameter in mm : ")
+
+        section, ir = create_ir_diagram(main_dia, traverse_dia)
+
+        section_fig.append(section)
+        ir_fig.append(ir)
+
+        ask = input("Any section? : Y|N ").upper()
+        if ask == "N":
+            break
+        else:
+            n += 1
+
+ 
+
+    create_html(section_fig, ir_fig)
 
 
 # Call the main function
@@ -296,6 +290,6 @@ if __name__ == "__main__":
 
 
 """
-python app/rect.py --b=40 --h=60 --main=25 --trav=9 --Pu=2500 --Mux=120 --Muy=45
+python app/rect.py --b=40 --h=60 --Pu=2500 --Mux=120 --Muy=45
 
 """

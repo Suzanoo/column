@@ -163,32 +163,48 @@ def create_plot(c, dia, main_dia, N, data, x_ir, y_ir, Pu, Mu):
     return section_fig, ir_fig
 
 
-def create_html(c, dia, main_dia, N, data, x_ir, y_ir, Pu, Mu):
+def create_html(section_fig, ir_fig):
+    # Start building the HTML content
+    html_content = """
+    <html>
+        <head>
+            <title>Rectangle Plot</title>
+            <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+        </head>
+        <body>
+    """
 
-    section_fig, ir_fig = create_plot(c, dia, main_dia, N, data, x_ir, y_ir, Pu, Mu)
+    # Loop through the list of figures
+    for i in range(len(section_fig)):
+        # Convert each figure to HTML
+        section_html = section_fig[i].to_html(full_html=False, include_plotlyjs=False)
+        ir_html = ir_fig[i].to_html(full_html=False, include_plotlyjs=False)
 
-    # Save each plot to a string
-    section_html = section_fig.to_html(full_html=False, include_plotlyjs="cdn")
-    ir_html = ir_fig.to_html(full_html=False, include_plotlyjs="cdn")
-
-    # Combine both plots into one HTML file
-    with open("circular_plot.html", "w") as f:
-        f.write(
-            f"""
-        <html>
-            <head>
-                <title>Crcular_plot Plot</title>
-                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-            </head>
-            <body>
-                <h1>Section Plot</h1>
+        # Add the row for this pair of figures
+        html_content += f"""
+        <div style="display: flex; justify-content: space-around; margin-bottom: 30px;">
+            <div style="width: 48%;">
+                <h1>Section Plot {i + 1}</h1>
                 {section_html}
-                <h1>IR Diagram</h1>
+            </div>
+            <div style="width: 48%;">
+                <h1>IR Diagram {i + 1}</h1>
                 {ir_html}
-            </body>
-        </html>
+            </div>
+        </div>
         """
-        )
+
+    # End the HTML content
+    html_content += """
+        </body>
+    </html>
+    """
+
+    # Write the HTML content to a file
+    with open("circular_plot.html", "w") as f:
+        f.write(html_content)
+
+    print("Please open circular_plot.html in your project folder")
 
 
 # Displat section in each state

@@ -6,7 +6,7 @@ from absl.flags import FLAGS
 
 
 from utils import get_valid_integer, calculate_areas, display_table
-from plot_circular import create_html
+from plot_circular import create_plot, create_html
 from column import Column
 
 
@@ -74,8 +74,7 @@ def information(section_dia, covering, main_dia, traverse_dia, N):
     return context
 
 
-def main(argv):
-    print("====================== Column Design ======================")
+def create_ir_diagram():
     # Input parameters
     while True:
         section_dia = get_valid_integer("Define section diameter in cm : ")
@@ -173,14 +172,33 @@ def main(argv):
     )
     display_table(df)
 
-    print("Please open circular_plot.html in your project folder")
-
-    # ----------------------------------------------------------------
-    # Plot section
-
-    create_html(
+    section_fig, ir_fig = create_plot(
         section_dia / 2, section_dia, main_dia / 10, N, data, x_ir, y_ir, Pu, Mu
     )
+
+    return section_fig, ir_fig
+
+
+def main(argv):
+    print("====================== Column Design ======================")
+    n = 1
+    section_fig = []
+    ir_fig = []
+    while True:
+        print(f"============== Section {n} ==============")
+
+        section, ir = create_ir_diagram()
+
+        section_fig.append(section)
+        ir_fig.append(ir)
+
+        ask = input("Any section? , Y|N : ").upper()
+        if ask == "N":
+            break
+        else:
+            n += 1
+
+    create_html(section_fig, ir_fig)
 
     # ----------------------------------------------------------------
 

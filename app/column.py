@@ -147,7 +147,7 @@ class Column:
         P0 = -(0.85 * self.fc * An + self.fy * Ast) * 1e-3  # kN
         𝜙Pn = 0.65 * P0  # kN
         𝜙Pn_max = 0.85 * P0  # kN
-        print(f"𝜙Pn_max = {𝜙Pn_max} kN")
+        print(f"𝜙Pn_max = {𝜙Pn_max:.2f} kN")
 
         return 𝜙Pn, 𝜙Pn_max
 
