@@ -25,20 +25,21 @@ def get_rebar_coordinates(
 ):
     rebar_data = []
 
-    # Calculate positions of bottom reinforcement layers
+    # Calculate positions of top reinforcement layers
     layer_spacing = 2 * main_dia
-    y_bottom_layers = [c + (i + 0.5) * layer_spacing for i in range(len(bottom_layers))]
+    y_top_layers = [d - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
 
-    for y, num_bars in zip(y_bottom_layers, bottom_layers):
+    for y, num_bars in zip(y_top_layers, top_layers):
         x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
         for x in x_positions:
             z = d - y
             rebar_data.append({"x": x, "y": y, "z": z})
 
-    # Calculate positions of top reinforcement layers
-    y_top_layers = [d - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
+    # Calculate positions of bottom reinforcement layers
 
-    for y, num_bars in zip(y_top_layers, top_layers):
+    y_bottom_layers = [c + (i + 0.5) * layer_spacing for i in range(len(bottom_layers))]
+
+    for y, num_bars in zip(y_bottom_layers, bottom_layers):
         x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
         for x in x_positions:
             z = d - y
@@ -99,11 +100,11 @@ def plot_rc_section(
         line=dict(color="green", width=2),
     )
 
-    # Calculate positions of bottom reinforcement layers
+    # Calculate positions of top reinforcement layers
     layer_spacing = 2 * main_dia
-    y_bottom_layers = [c + (i + 0.5) * layer_spacing for i in range(len(bottom_layers))]
+    y_top_layers = [d - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
 
-    for y, num_bars in zip(y_bottom_layers, bottom_layers):
+    for y, num_bars in zip(y_top_layers, top_layers):
         x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
         for x in x_positions:
             fig.add_shape(
@@ -116,10 +117,10 @@ def plot_rc_section(
                 fillcolor="blue",
             )
 
-    # Calculate positions of top reinforcement layers
-    y_top_layers = [d - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
+    # Calculate positions of bottom reinforcement layers
+    y_bottom_layers = [c + (i + 0.5) * layer_spacing for i in range(len(bottom_layers))]
 
-    for y, num_bars in zip(y_top_layers, top_layers):
+    for y, num_bars in zip(y_bottom_layers, bottom_layers):
         x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
         for x in x_positions:
             fig.add_shape(

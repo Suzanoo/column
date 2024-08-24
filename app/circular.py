@@ -96,16 +96,18 @@ def create_ir_diagram(section_dia, main_dia, N, traverse_dia, stirrup_type):
         Es=FLAGS.Es,
         b=section_dia,
         h=section_dia,
+        section="circle",
         stirrup=stirrup_type,
     )
-    column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
+    column.initialize(main_dia / 10, traverse_dia / 10, Ast, An, Ag)
+    column.traverse(An, Ag, main_dia / 10, traverse_dia / 10)
 
     # Get rebars coordinates
     data = information(section_dia, covering, main_dia / 10, traverse_dia / 10, N)
     df_rebars = pd.DataFrame(data["rebar_data"])
 
     print(f"\n[INFO] Rebars coodinates(x, y) and distance from top edge(z), cm ")
-    display_table(df_rebars)
+    # display_table(df_rebars)
 
     # Initialized
     neutral_axis = []
@@ -118,24 +120,21 @@ def create_ir_diagram(section_dia, main_dia, N, traverse_dia, stirrup_type):
     x_ir.append(0)
 
     ## 2-Zero Tension
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df)
+    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df_rebars)
 
     y_ir.append(abs(𝜙Pn))
     x_ir.append(𝜙Mn)
     neutral_axis.append(c)
 
     ## 3-Balance
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df)
+    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df_rebars)
 
     y_ir.append(abs(𝜙Pn))
     x_ir.append(𝜙Mn)
     neutral_axis.append(c)
 
     ## 4-Pure Bending
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df)
+    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df_rebars)
 
     y_ir.append(0)
     x_ir.append(𝜙Mn)
@@ -208,7 +207,6 @@ def main(argv):
 
             ask = input("Confirm! Y|N :").upper()
             if ask == "Y":
-                print("Good Luck!")
                 break
             else:
                 pass

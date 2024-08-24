@@ -25,8 +25,6 @@ flags.DEFINE_integer("fv", 235, "SR24 traverse, MPa")
 flags.DEFINE_integer("Es", 200000, "Young's modulus ,MPa")
 flags.DEFINE_float("c", 4, "concrete covering, cm")
 
-# flags.DEFINE_integer("main", 12, "main reinforcement, mm")
-# flags.DEFINE_integer("trav", 6, "traverse reinforcement, mm")
 flags.DEFINE_float("b", 0, "width, cm")
 flags.DEFINE_float("h", 0, "depth, cm")
 flags.DEFINE_float("Pu", 0, "Axial force, kN")
@@ -45,7 +43,7 @@ def x_axis(main_dia, N, df_rebars, column):
     Ag, Ast, An = calculate_areas_in_rect(FLAGS.b, FLAGS.h, main_dia / 10, N)  # cm2
 
     print(f"\n[INFO] Rebars coodinates(x, y) and distance from top edge(z), cm ")
-    display_table(df_rebars)
+    # display_table(df_rebars)
 
     ## 1-Pure Compression
     𝜙Pn, 𝜙Pn_max = column.pure_compression(Ast, An)
@@ -53,24 +51,21 @@ def x_axis(main_dia, N, df_rebars, column):
     x_ir_mux.append(0)
 
     ## 2-Zero Tension
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df, rect=True)
+    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df_rebars)
 
     y_ir_mux.append(abs(𝜙Pn))
     x_ir_mux.append(𝜙Mn)
     nuetral_axis.append(c)
 
     ## 3-Balance
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df, rect=True)
+    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df_rebars)
 
     y_ir_mux.append(abs(𝜙Pn))
     x_ir_mux.append(𝜙Mn)
     nuetral_axis.append(c)
 
     ## 4-Pure Bending
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df, rect=True)
+    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df_rebars)
 
     y_ir_mux.append(0)
     x_ir_mux.append(𝜙Mn)
@@ -127,7 +122,7 @@ def y_axis(main_dia, N, df_rebars, column):
     df_swapped["z"] = FLAGS.h - df_swapped["y"]
 
     print(f"\n[INFO] Rebars coodinates(x, y) and distance from top edge(z), cm ")
-    display_table(df_swapped)
+    # display_table(df_swapped)
 
     ## 1-Pure Compression
     𝜙Pn, 𝜙Pn_max = column.pure_compression(Ast, An)
@@ -135,32 +130,27 @@ def y_axis(main_dia, N, df_rebars, column):
     x_ir_muy.append(0)
 
     ## 2-Zero Tension
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df_swapped, rect=True)
-
+    𝜙Pn, 𝜙Mn, c = column.zero_tension(main_dia, df_swapped)
     y_ir_muy.append(abs(𝜙Pn))
     x_ir_muy.append(𝜙Mn)
     nuetral_axis.append(c)
 
     ## 3-Balance
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df_swapped, rect=True)
 
+    𝜙Pn, 𝜙Mn, c = column.balance(main_dia, df_swapped)
     y_ir_muy.append(abs(𝜙Pn))
     x_ir_muy.append(𝜙Mn)
     nuetral_axis.append(c)
 
     ## 4-Pure Bending
-    df = df_rebars.copy()
-    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df_swapped, rect=True)
 
+    𝜙Pn, 𝜙Mn, c = column.pure_bending(main_dia, df_swapped)
     y_ir_muy.append(0)
     x_ir_muy.append(𝜙Mn)
     nuetral_axis.append(c)
 
     ## 5-Pure Tension
     𝜙Pn = column.pure_tension(Ast * 1e2)
-
     y_ir_muy.append(𝜙Pn)
     x_ir_muy.append(0)
 
@@ -197,7 +187,7 @@ def create_ir_diagram(main_dia, traverse_dia):
         top_layers = convert_input_to_list(
             input("Define list of top reinforcement for each layer, ex. 3 2 : ")
         )
-        middle_rebars = get_valid_integer("Define middle rebars ex.4 : ")
+        middle_rebars = get_valid_integer("How many middle rebars(2 sides)? ex.4 : ")
 
         ask = input("Confirm! Y|N :").upper()
         if ask == "Y":
@@ -224,22 +214,40 @@ def create_ir_diagram(main_dia, traverse_dia):
     # Calculalte concrete and rebars area
     Ag, Ast, An = calculate_areas_in_rect(FLAGS.b, FLAGS.h, main_dia / 10, N)  # cm2
 
+    # ----------------------------------------------------------------
     print(f"\nX-X Axis")
     # Instanciated
     column = Column(
-        FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es, FLAGS.b, FLAGS.h, stirrup="tie"
+        FLAGS.fc,
+        FLAGS.fv,
+        FLAGS.fy,
+        FLAGS.Es,
+        FLAGS.b,
+        FLAGS.h,
+        section="rect",
+        stirrup="tie",
     )
-    column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
+    column.initialize(main_dia / 10, traverse_dia / 10, Ast, An, Ag)
+    column.traverse(An, Ag, main_dia / 10, traverse_dia / 10)
 
     # Coordinate for IR-diagrams for Mux
     x_ir_mux, y_ir_mux = x_axis(main_dia, N, df_rebars, column)
 
+    # ----------------------------------------------------------------
     print(f"\nY-Y Axis")
     # Instanciated
     column = Column(
-        FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es, FLAGS.h, FLAGS.b, stirrup="tie"
+        FLAGS.fc,
+        FLAGS.fv,
+        FLAGS.fy,
+        FLAGS.Es,
+        FLAGS.h,
+        FLAGS.b,
+        section="rect",
+        stirrup="tie",
     )  # Swapp b, h
-    column.initialize(main_dia / 10, traverse_dia / 10, Ast, Ag)
+    column.initialize(main_dia / 10, traverse_dia / 10, Ast, An, Ag)
+    column.traverse(An, Ag, main_dia / 10, traverse_dia / 10)
 
     # Coordinate for IR-diagrams for Muy
     x_ir_muy, y_ir_muy = y_axis(main_dia, N, df_rebars, column)
@@ -271,7 +279,7 @@ def main(argv):
     print(
         f"fc: {FLAGS.fc} MPa, fv: {FLAGS.fv} MPa, fy: {FLAGS.fy} MPa, Es: {FLAGS.Es} MP"
     )
-    print(f"width: {FLAGS.b} cm, depth: {FLAGS.h} cm")
+    print(f"Column section: {FLAGS.b} x {FLAGS.h} cm")
     print(f"Pu: {FLAGS.Pu} kN, Mux: {FLAGS.Mux} kN-m, Muy: {FLAGS.Muy} kN-m")
 
     n = 1
@@ -304,6 +312,6 @@ if __name__ == "__main__":
 
 
 """
-python app/rect.py --b=40 --h=60 --Pu=2500 --Mux=120 --Muy=45
+python app/rect.py --b=50 --h=50 --Pu=2500 --Mux=120 --Muy=45
 
 """
