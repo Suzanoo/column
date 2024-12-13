@@ -234,4 +234,10 @@ if __name__ == "__main__":
     print("Hello, world!")
     app.run(main)
 
-# python app/circular.py  --Pu=2500 --Mux=125 --Muy=45
+"""
+Equivalent circular section : 
+    dia = min(l1, l2, l3,...)
+
+
+python app/circular.py  --Pu=2500 --Mux=125 --Muy=45
+"""

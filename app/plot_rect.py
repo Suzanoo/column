@@ -3,65 +3,9 @@ from plotly.subplots import make_subplots
 
 import pandas as pd
 
+from rebar import Rebar
 
-def calculate_rebar_positions(c, b, N, main_dia, travesre_dia):
-    if N == 1:
-        return [c + (b - 2 * c) / 2]
-    elif N == 2:
-        return [c + travesre_dia + main_dia / 2, b - c - travesre_dia - main_dia / 2]
-    else:
-        positions = [
-            c
-            + main_dia / 2
-            + travesre_dia
-            + i * (b - 2 * c - main_dia - 2 * travesre_dia) / (N - 1)
-            for i in range(N)
-        ]
-        return positions
-
-
-def get_rebar_coordinates(
-    b, d, c, main_dia, travesre_dia, bottom_layers, top_layers, middle_rebars
-):
-    rebar_data = []
-
-    # Calculate positions of top reinforcement layers
-    layer_spacing = 2 * main_dia
-    y_top_layers = [d - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
-
-    for y, num_bars in zip(y_top_layers, top_layers):
-        x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
-        for x in x_positions:
-            z = d - y
-            rebar_data.append({"x": x, "y": y, "z": z})
-
-    # Calculate positions of bottom reinforcement layers
-
-    y_bottom_layers = [c + (i + 0.5) * layer_spacing for i in range(len(bottom_layers))]
-
-    for y, num_bars in zip(y_bottom_layers, bottom_layers):
-        x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
-        for x in x_positions:
-            z = d - y
-            rebar_data.append({"x": x, "y": y, "z": z})
-
-    # Calculate positions of middle reinforcement layers
-    if middle_rebars > 0:
-        n = middle_rebars // 2
-        d_middle = min(y_top_layers) - max(y_bottom_layers)
-        s = d_middle / (n + 1)
-
-        for i in range(1, n + 1):
-            y_position = max(y_bottom_layers) + s * i
-            z = d - y_position
-            rebar_data.append(
-                {"x": c + travesre_dia + main_dia / 2, "y": y_position, "z": z}
-            )
-            rebar_data.append(
-                {"x": b - c - travesre_dia - main_dia / 2, "y": y_position, "z": z}
-            )
-
-    return pd.DataFrame(rebar_data)
+rebar = Rebar()
 
 
 def plot_rc_section(
@@ -105,7 +49,9 @@ def plot_rc_section(
     y_top_layers = [d - c - (i + 0.5) * layer_spacing for i in range(len(top_layers))]
 
     for y, num_bars in zip(y_top_layers, top_layers):
-        x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
+        x_positions = rebar.calculate_rebar_positions(
+            c, b, num_bars, main_dia, travesre_dia
+        )
         for x in x_positions:
             fig.add_shape(
                 type="circle",
@@ -121,7 +67,9 @@ def plot_rc_section(
     y_bottom_layers = [c + (i + 0.5) * layer_spacing for i in range(len(bottom_layers))]
 
     for y, num_bars in zip(y_bottom_layers, bottom_layers):
-        x_positions = calculate_rebar_positions(c, b, num_bars, main_dia, travesre_dia)
+        x_positions = rebar.calculate_rebar_positions(
+            c, b, num_bars, main_dia, travesre_dia
+        )
         for x in x_positions:
             fig.add_shape(
                 type="circle",

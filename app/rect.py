@@ -198,6 +198,7 @@ def create_ir_diagram(main_dia, traverse_dia):
 
     # Total rebars
     N = sum(bottom_layers + top_layers)
+    total_rebars = sum(bottom_layers + top_layers) + middle_rebars
 
     # Get the rebar coordinates
     df_rebars = get_rebar_coordinates(
@@ -252,6 +253,7 @@ def create_ir_diagram(main_dia, traverse_dia):
     # Coordinate for IR-diagrams for Muy
     x_ir_muy, y_ir_muy = y_axis(main_dia, N, df_rebars, column)
 
+    # ----------------------------------------------------------------
     section_fig, ir_fig = create_plot(
         FLAGS.b,
         FLAGS.h,
@@ -270,7 +272,7 @@ def create_ir_diagram(main_dia, traverse_dia):
         FLAGS.Muy,
     )
 
-    return section_fig, ir_fig
+    return section_fig, ir_fig, total_rebars
 
 
 def main(argv):
@@ -291,13 +293,19 @@ def main(argv):
         main_dia = get_valid_integer("Main rebar diameter in mm : ")
         traverse_dia = get_valid_integer("Traverse rebar diameter in mm : ")
 
-        section, ir = create_ir_diagram(main_dia, traverse_dia)
+        section, ir, total_rebars = create_ir_diagram(main_dia, traverse_dia)
 
         section_fig.append(section)
         ir_fig.append(ir)
 
         ask = input("Any section? , Y|N : ").upper()
         if ask == "N":
+            spacing = get_valid_integer(
+                "Please see spacing required and define value in cm : "
+            )
+
+            print(f"Main reinf : {total_rebars} - ø{main_dia}mm")
+            print(f"Traverse reinf : ø{traverse_dia}mm @ {spacing} cm")
             break
         else:
             n += 1
