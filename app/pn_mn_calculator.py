@@ -83,4 +83,4 @@ class PnMnCoordinateCalculator:
         )
 
         display_table(df_forces)
-        return x_coords, y_coords
+        return y_coords, x_coords  # 𝜙Pn, 𝜙Mn

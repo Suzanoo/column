@@ -30,7 +30,6 @@ class SectionGenerate:
         bottom_layers, top_layers, middle_rebars = rebar.rebar_laying()
 
         # Total rebars
-        N = sum(bottom_layers + top_layers)
         total_rebars = sum(bottom_layers + top_layers) + middle_rebars
 
         # Reinforcement object
