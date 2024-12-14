@@ -50,4 +50,14 @@ class SectionGenerate:
 
         display_table(df_rebars)
 
-        return materials, geometry, reinforcement, df_rebars
+        context = {
+            "materials": materials,
+            "geometry": geometry,
+            "reinforcement": reinforcement,
+            "bottom_layers": bottom_layers,
+            "top_layers": top_layers,
+            "middle_rebars": middle_rebars,
+            "df_rebars": df_rebars,
+        }
+
+        return context

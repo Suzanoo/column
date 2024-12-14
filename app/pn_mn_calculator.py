@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 
-from column_gpt import StrengthCalculator, ForceCalculator, ForceInSection
+from column_gpt import StrengthCalculator, PnMnCalculator, ForceInSection
 
 from utils import display_table
 
 
-class PnMnCalculator:
+class PnMnCoordinateCalculator:
     def __init__(self, materials, geometry, reinforcement):
         self.materials = materials
         self.geometry = geometry
@@ -20,7 +20,7 @@ class PnMnCalculator:
         strength_calulator = StrengthCalculator(
             self.materials, self.geometry, self.reinforcement
         )
-        calculator = ForceCalculator(
+        calculator = PnMnCalculator(
             self.materials, self.geometry, self.reinforcement, strength_calulator
         )
 
@@ -67,6 +67,7 @@ class PnMnCalculator:
         x_coords = np.array(x_coords)
         y_coords = np.array(y_coords)
 
+        print("IR Coordinates : ")
         df_forces = pd.DataFrame(
             {
                 "Status": [

@@ -1,5 +1,6 @@
 import numpy as np
-from utils import display_table, sum_separate, segment_area_above_line
+
+from utils import display_table, sum_separate
 
 
 class MaterialProperties:
@@ -103,6 +104,7 @@ class StrengthCalculator:
     def calculate_phi_factor(self, c):
         """
         Calculate the strength reduction factor (φ) based on c and d.
+        c = nuetral axis from top edge of section
         """
         if c == 0:
             return 0.65
@@ -159,7 +161,7 @@ class StrengthCalculator:
         return self.calculate_phi_factor(c) * Pn, self.calculate_phi_factor(c) * Mn
 
 
-class ForceCalculator:
+class PnMnCalculator:
     def __init__(self, materials, geometry, reinforcement, strength_calculator):
         self.materials = materials
         self.geometry = geometry
@@ -176,18 +178,20 @@ class ForceCalculator:
         )  # kN
         𝜙Pn = 0.65 * P0
         𝜙Pn_max = 0.85 * P0
-        print(f"Pure Compression:, {𝜙Pn:.2f} kN")
+        print(f"Pure Compression : 𝜙Pn = {𝜙Pn:.2f} kN")
         return 𝜙Pn, 0  # kN, kN-m
 
     def pure_tension(self, Ast):
-        return -self.materials.fy * Ast * 1e-3, 0  # kN, kN-m
+        𝜙Pn = -self.materials.fy * Ast * 1e-3
+        print(f"Pure Tension : 𝜙Pn = {𝜙Pn:.2f} kN")
+        return 𝜙Pn, 0  # kN, kN-m
 
     def zero_tension(self, df):
         c = self.geometry.h
         a = self.β1 * c
         # Placeholder for PnMn_calculation
         𝜙Pn, 𝜙Mn = self.calculator.calculate_pn_mn(c, a, df)
-        print(f"Zero Tension: {𝜙Pn:.2f} kN, {𝜙Mn:.2f} kN-m")
+        print(f"Zero Tension : 𝜙Pn, 𝜙Mn = {𝜙Pn:.2f} kN, {𝜙Mn:.2f} kN-m")
         display_table(df)
         return 𝜙Pn, 𝜙Mn
 
@@ -196,7 +200,7 @@ class ForceCalculator:
         a = self.β1 * c
         # Placeholder for PnMn_calculation
         𝜙Pn, 𝜙Mn = self.calculator.calculate_pn_mn(c, a, df)
-        print(f"Balance: {𝜙Pn:.2f} kN, {𝜙Mn:.2f} kN-m")
+        print(f"Balance : 𝜙Pn, 𝜙Mn = {𝜙Pn:.2f} kN, {𝜙Mn:.2f} kN-m")
         display_table(df)
         return 𝜙Pn, 𝜙Mn
 
@@ -228,7 +232,7 @@ class ForceCalculator:
             axial.append(𝜙Pn)
             moment.append(𝜙Mn)
 
-        print(f"Pure Bending: {𝜙Pn:.2f} kN, {𝜙Mn:.2f} kN-m")
+        print(f"Pure Bending : 𝜙Pn, 𝜙Mn = {𝜙Pn:.2f} kN, {𝜙Mn:.2f} kN-m")
         display_table(df)
         return 𝜙Pn, 𝜙Mn
 

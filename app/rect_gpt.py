@@ -1,9 +1,22 @@
 from section_generate import SectionGenerate
-from pm_calculator import PnMnCalculator
+from pn_mn_calculator import PnMnCoordinateCalculator
+from plot import Plot
 
-
+## ----------------------------------------------------------------
 section = SectionGenerate(fc=30, fv=240, fy=500, Es=200000)
-materials, geometry, reinforcement, df_rebars = section.rectangle(b=25, h=45)
+context = section.rectangle(b=25, h=45)
 
-force = PnMnCalculator(materials, geometry, reinforcement)
-𝜙Pn, 𝜙Mn = force.pn_mn_calculator(df_rebars)
+## ----------------------------------------------------------------
+force = PnMnCoordinateCalculator(
+    context["materials"], context["geometry"], context["reinforcement"]
+)
+𝜙Pn_coords, 𝜙Mn_coords = force.pn_mn_calculator(context["df_rebars"])
+
+## ----------------------------------------------------------------
+plot = Plot()
+fig = plot.plot_rc_section(context, covering=4)
+fig.show()
+
+"""
+python app/rect_gpt.py
+"""
