@@ -1,5 +1,5 @@
 ## **RC column design use Python**
-This CMD app use [ChatGPT](https://openai.com/chatgpt/) to generate the code.
+This CMD app use [ChatGPT](https://openai.com/chatgpt/) help to generate the code.
 See the prompt from link below.
 - [Rectangular column](https://chatgpt.com/share/a419775f-74f5-4ca7-a8ea-4867382fca70)
 - [Circular column](https://chatgpt.com/share/3aa7a0c3-014c-481d-ad4c-3c2ac2ed22ec)
@@ -42,8 +42,8 @@ pip install -r requirements.txt
 
 6. Enjoy !!
 ```
-python app/rect.py --b=30 --h=50 --Pu=2500 --Mux=120 --Muy=25
-python app/circular.py  --Pu=2500 --Mux=120 --Muy=25
+python app/rectangle.py --b=25 --h=25 --Pu=500 --Mux=45 --Muy=10
+python app/circular.py --dia=30 --Pu=450 --Mux=15 --Muy=10
 
 Look at FLAGS definition for alternative
 ```

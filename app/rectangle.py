@@ -20,6 +20,87 @@ flags.DEFINE_float("Mux", 0, "Mux, kN-m")
 flags.DEFINE_float("Muy", 0, "Mux, kN-m")
 
 
+def rectangle_column():
+    # Plot object
+    plot = Plot()
+
+    # Placefholder
+    n, sections_placholder, ir_placeholder = 1, [], []
+
+    # Implementation
+    while True:
+        print(f"\n====================== section {n} ======================")
+        # Create section object
+        section = SectionGenerate(FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es)
+
+        # Generate column section
+        context = section.rectangle(FLAGS.b, FLAGS.h)
+
+        ## ----------------------------------------------------------------
+        print("==================== Mux ===================")
+        # Calculate column strength
+        force = PnMnCoordinateCalculator(
+            context["materials"], context["geometry"], context["reinforcement"]
+        )
+        𝜙Pn_coords, 𝜙Mn_coords = force.compute_pn_mn(context["df_rebars"])
+
+        # Generate section figure and IR diagram figure
+        section_fig = plot.plot_rc_section(context, FLAGS.c)
+        irx_fig = plot.IR_diagram(
+            𝜙Mn_coords, 𝜙Pn_coords, FLAGS.Pu, FLAGS.Mux, "IR-Diagram"
+        )
+
+        ## ----------------------------------------------------------------
+        print("==================== Muy ===================")
+        # Swapped geometry
+        context["geometry"].b, context["geometry"].h = (
+            context["geometry"].h,
+            context["geometry"].b,
+        )
+
+        # Swapped rebars coordinates 'x' and 'y' in df
+        df_swapped = (
+            context["df_rebars"].copy()[["x", "y"]].rename(columns={"x": "y", "y": "x"})
+        )
+
+        # Rearrange the columns to [x, y]
+        df_swapped = df_swapped[["x", "y"]]
+
+        # Calculate distance from top, z
+        df_swapped["z"] = FLAGS.b - df_swapped["y"]
+        display_table(df_swapped)
+
+        # Calculate column strength
+        force = PnMnCoordinateCalculator(
+            context["materials"], context["geometry"], context["reinforcement"]
+        )
+        𝜙Pn_coords, 𝜙Mn_coords = force.compute_pn_mn(df_swapped)
+
+        # Generate IR diagram figure
+        iry_fig = plot.IR_diagram(
+            𝜙Mn_coords, 𝜙Pn_coords, FLAGS.Pu, FLAGS.Muy, "IR-Diagram"
+        )
+
+        # Merge IR of Mux and Muy
+        combined_fig = plot.plot_combined(irx_fig, iry_fig)
+
+        # ----------------------------------------------------------------
+        # Collect into placefholder
+        sections_placholder.append(section_fig)
+        ir_placeholder.append(combined_fig)
+
+        ask = input("Any section? , Y|N : ").upper()
+        if ask == "N":
+            break
+        else:
+            n += 1
+
+    # Create HTML output
+    plot.create_html(
+        sections_placholder, ir_placeholder, file_name="rectangle_plot.html"
+    )
+
+
 def main(argv):
     print("====================== Rectangular Column Design ======================")
     print("[INFO] Information : ")
@@ -29,67 +110,7 @@ def main(argv):
     print(f"[Geometry] - bxh : {FLAGS.b} x {FLAGS.h} cm")
     print(f"[Loads] - Pu: {FLAGS.Pu} kN, Mux: {FLAGS.Mux} kN-m, Muy: {FLAGS.Muy} kN-m")
 
-    # Create plot object
-    plot = Plot()
-
-    # Placefholder
-    n, sections_placholder, ir_placeholder = 1, [], []
-
-    # Create section object
-    section = SectionGenerate(FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es)
-
-    # Generate column section
-    context = section.rectangle(FLAGS.b, FLAGS.h)
-
-    ## ----------------------------------------------------------------
-    print("==================== Mux ===================")
-    # Calculate column strength
-    force = PnMnCoordinateCalculator(
-        context["materials"], context["geometry"], context["reinforcement"]
-    )
-    𝜙Pn_coords, 𝜙Mn_coords = force.compute_pn_mn(context["df_rebars"])
-
-    # Generate section figure and IR diagram figure
-    section_fig = plot.plot_rc_section(context, FLAGS.c)
-    irx_fig = plot.IR_diagram(𝜙Mn_coords, 𝜙Pn_coords, FLAGS.Pu, FLAGS.Mux, "IR-Diagram")
-
-    ## ----------------------------------------------------------------
-    print("==================== Muy ===================")
-    # Swapped geometry
-    context["geometry"].b, context["geometry"].h = (
-        context["geometry"].h,
-        context["geometry"].b,
-    )
-
-    # Swapped rebars coordinates 'x' and 'y' in df
-    df_swapped = (
-        context["df_rebars"].copy()[["x", "y"]].rename(columns={"x": "y", "y": "x"})
-    )
-
-    # Rearrange the columns to [x, y]
-    df_swapped = df_swapped[["x", "y"]]
-
-    # Calculate distance from top, z
-    df_swapped["z"] = FLAGS.b - df_swapped["y"]
-    display_table(df_swapped)
-
-    # Calculate column strength
-    force = PnMnCoordinateCalculator(
-        context["materials"], context["geometry"], context["reinforcement"]
-    )
-    𝜙Pn_coords, 𝜙Mn_coords = force.compute_pn_mn(df_swapped)
-
-    # Generate section figure and IR diagram figure
-    iry_fig = plot.IR_diagram(𝜙Mn_coords, 𝜙Pn_coords, FLAGS.Pu, FLAGS.Muy, "IR-Diagram")
-    combined_fig = plot.plot_combined(irx_fig, iry_fig)
-
-    # Collect into placefholder
-    sections_placholder.append(section_fig)
-    ir_placeholder.append(combined_fig)
-
-    plot.create_html(
-        sections_placholder, ir_placeholder, file_name="rectangle_plot.html"
-    )
+    rectangle_column()
 
 
 # Call the main function
@@ -99,5 +120,5 @@ if __name__ == "__main__":
 
 
 """
-python app/rectangle.py --b=25 --h=25 --Pu=450 --Mux=15 --Muy=10
+python app/rectangle.py --b=25 --h=25 --Pu=500 --Mux=45 --Muy=10
 """
