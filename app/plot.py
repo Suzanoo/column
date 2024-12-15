@@ -1,4 +1,6 @@
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+
 
 from rebar import Rebar
 
@@ -264,3 +266,70 @@ class Plot:
         )
 
         return fig
+
+    def create_html(self, section_fig, ir_fig, file_name):
+        # Start building the HTML content
+        html_content = """
+        <html>
+            <head>
+                <title>Rectangle Plot</title>
+                <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+            </head>
+            <body>
+        """
+
+        # Loop through the list of figures
+        for i in range(len(section_fig)):
+            # Convert each figure to HTML
+            section_html = section_fig[i].to_html(
+                full_html=False, include_plotlyjs=False
+            )
+            ir_html = ir_fig[i].to_html(full_html=False, include_plotlyjs=False)
+
+            # Add the row for this pair of figures
+            html_content += f"""
+            <div style="display: flex; justify-content: space-around; margin-bottom: 30px;">
+                <div style="width: 45%;">
+                    <h1>Section {i + 1}</h1>
+                    {section_html}
+                </div>
+                <div style="width: 45%;">
+                    <h1>IR Diagram {i + 1}</h1>
+                    {ir_html}
+                </div>
+            </div>
+            """
+
+        # End the HTML content
+        html_content += """
+            </body>
+        </html>
+        """
+
+        # Write the HTML content to a file
+        with open(file_name, "w") as f:
+            f.write(html_content)
+
+        print(f"Please open {file_name} in your project folder")
+
+    def plot_combined(self, fig1, fig2):
+        # Create a combined subplot with 1 row and 2 columns
+        combined_fig = make_subplots(rows=1, cols=2, subplot_titles=("Mux", "Muy"))
+
+        # Add traces from the first figure
+        for trace in fig1["data"]:
+            combined_fig.add_trace(trace, row=1, col=1)
+
+        # Add traces from the second figure
+        for trace in fig2["data"]:
+            combined_fig.add_trace(trace, row=1, col=2)
+
+        # Update layout for spacing and appearance
+        combined_fig.update_layout(
+            title_text="IR-Diagram",
+            height=500,
+            width=1000,
+            showlegend=False,
+        )
+
+        return combined_fig

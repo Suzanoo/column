@@ -20,6 +20,61 @@ flags.DEFINE_float("Mux", 0, "Mux, kN-m")
 flags.DEFINE_float("Muy", 0, "Mux, kN-m")
 
 
+def circular_column():
+
+    # Plot object
+    plot = Plot()
+
+    # Placefholder
+    n, sections_placholder, ir_placeholder = 1, [], []
+
+    # Implementation
+    while True:
+        print(f"\n====================== section {n} ======================")
+
+        # Create column object
+        section = SectionGenerate(FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es)
+
+        # Generate section
+        force_context, plot_context = section.circular(FLAGS.dia, FLAGS.c)
+
+        # Calculate strength of section
+        force = PnMnCoordinateCalculator(
+            force_context["materials"],
+            force_context["geometry"],
+            force_context["reinforcement"],
+        )
+        𝜙Pn_coords, 𝜙Mn_coords = force.compute_pn_mn(force_context["df_rebars"])
+
+        # Generare section figure
+        section_fig = plot.plot_circular_section(
+            FLAGS.dia,
+            force_context["reinforcement"].main_dia / 10,  # Convert mm to cm
+            force_context["reinforcement"].N,
+            FLAGS.dia / 2,
+            plot_context,
+        )
+
+        # Generare IR-diagrame figure
+        Mu = np.sqrt(FLAGS.Mux * FLAGS.Mux + FLAGS.Muy * FLAGS.Muy)
+        ir_fig = plot.IR_diagram(𝜙Mn_coords, 𝜙Pn_coords, FLAGS.Pu, Mu, "IR-Diagram")
+
+        # Collect into placeholder
+        sections_placholder.append(section_fig)
+        ir_placeholder.append(ir_fig)
+
+        ask = input("Any section? , Y|N : ").upper()
+        if ask == "N":
+            break
+        else:
+            n += 1
+
+    # Create HTML output
+    plot.create_html(
+        sections_placholder, ir_placeholder, file_name="circular_plot.html"
+    )
+
+
 def main(argv):
     print("====================== Rectangular Column Design ======================")
     print("[INFO] Information : ")
@@ -29,36 +84,7 @@ def main(argv):
     print(f"[Geometry] - Diameter : {FLAGS.dia} cm")
     print(f"[Loads] - Pu: {FLAGS.Pu} kN, Mux: {FLAGS.Mux} kN-m, Muy: {FLAGS.Muy} kN-m")
 
-    # Create column object
-    section = SectionGenerate(FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es)
-
-    # Generate column section
-    force_context, plot_context = section.circular(FLAGS.dia, FLAGS.c)
-
-    # Calculate column strength
-    force = PnMnCoordinateCalculator(
-        force_context["materials"],
-        force_context["geometry"],
-        force_context["reinforcement"],
-    )
-    𝜙Pn_coords, 𝜙Mn_coords = force.compute_pn_mn(force_context["df_rebars"])
-
-    # Generate section figure and IR diagram figure
-    plot = Plot()
-    section_fig = plot.plot_circular_section(
-        FLAGS.dia,
-        force_context["reinforcement"].main_dia / 10,  # Convert mm to cm
-        force_context["reinforcement"].N,
-        FLAGS.dia / 2,
-        plot_context,
-    )
-
-    Mu = np.sqrt(FLAGS.Mux * FLAGS.Mux + FLAGS.Muy * FLAGS.Muy)
-
-    ir_fig = plot.IR_diagram(𝜙Mn_coords, 𝜙Pn_coords, FLAGS.Pu, Mu, "IR-Diagram")
-
-    section_fig.show()
-    ir_fig.show()
+    circular_column()
 
 
 # Call the main function

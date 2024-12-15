@@ -32,6 +32,9 @@ def main(argv):
     # Create plot object
     plot = Plot()
 
+    # Placefholder
+    n, sections_placholder, ir_placeholder = 1, [], []
+
     # Create section object
     section = SectionGenerate(FLAGS.fc, FLAGS.fv, FLAGS.fy, FLAGS.Es)
 
@@ -78,11 +81,15 @@ def main(argv):
 
     # Generate section figure and IR diagram figure
     iry_fig = plot.IR_diagram(𝜙Mn_coords, 𝜙Pn_coords, FLAGS.Pu, FLAGS.Muy, "IR-Diagram")
+    combined_fig = plot.plot_combined(irx_fig, iry_fig)
 
-    ## ----------------------------------------------------------------
-    section_fig.show()
-    irx_fig.show()
-    iry_fig.show()
+    # Collect into placefholder
+    sections_placholder.append(section_fig)
+    ir_placeholder.append(combined_fig)
+
+    plot.create_html(
+        sections_placholder, ir_placeholder, file_name="rectangle_plot.html"
+    )
 
 
 # Call the main function
