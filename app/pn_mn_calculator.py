@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from column_gpt import StrengthCalculator, PnMnCalculator, ForceInSection
+from column import StrengthCalculator, PnMnCalculator, ForceInSection
 
 from utils import display_table
 
@@ -31,7 +31,7 @@ class PnMnCoordinateCalculator:
         # ----------------------------------------------------------------
         # Step 5: Perform calculations, and get IR-diagram coordinates
         # ----------------------------------------------------------------
-        # initilize column properties
+        # initilize column properties: d, d', Ag, AS, An
         force_in_section.section_properties()
 
         # placeholder for IR-diagram coordinates
@@ -84,3 +84,6 @@ class PnMnCoordinateCalculator:
 
         display_table(df_forces)
         return y_coords, x_coords  # 𝜙Pn, 𝜙Mn
+
+    def compute_pn_mn(self, df_rebars):
+        return self.pn_mn_calculator(df_rebars)

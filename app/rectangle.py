@@ -38,12 +38,13 @@ def main(argv):
     # Generate column section
     context = section.rectangle(FLAGS.b, FLAGS.h)
 
+    ## ----------------------------------------------------------------
     print("==================== Mux ===================")
     # Calculate column strength
     force = PnMnCoordinateCalculator(
         context["materials"], context["geometry"], context["reinforcement"]
     )
-    𝜙Pn_coords, 𝜙Mn_coords = force.pn_mn_calculator(context["df_rebars"])
+    𝜙Pn_coords, 𝜙Mn_coords = force.compute_pn_mn(context["df_rebars"])
 
     # Generate section figure and IR diagram figure
     section_fig = plot.plot_rc_section(context, FLAGS.c)
@@ -73,7 +74,7 @@ def main(argv):
     force = PnMnCoordinateCalculator(
         context["materials"], context["geometry"], context["reinforcement"]
     )
-    𝜙Pn_coords, 𝜙Mn_coords = force.pn_mn_calculator(df_swapped)
+    𝜙Pn_coords, 𝜙Mn_coords = force.compute_pn_mn(df_swapped)
 
     # Generate section figure and IR diagram figure
     iry_fig = plot.IR_diagram(𝜙Mn_coords, 𝜙Pn_coords, FLAGS.Pu, FLAGS.Muy, "IR-Diagram")
@@ -91,5 +92,5 @@ if __name__ == "__main__":
 
 
 """
-python app/rect_gpt.py --b=25 --h=35 --Pu=450 --Mux=15 --Muy=10
+python app/rectangle.py --b=25 --h=25 --Pu=450 --Mux=15 --Muy=10
 """

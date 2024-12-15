@@ -1,230 +1,293 @@
 import numpy as np
+
 from utils import display_table, sum_separate, segment_area_above_line
 
 
-class Column:
-    def __init__(self, fc, fv, fy, Es, b, h, section, stirrup):
-        """
-        b : column width in rect-section, section diameter in circular section
-        h : column height in rect-section, section diameter in circular section
-        """
-        self.fc = fc
-        self.fv = fv
-        self.fy = fy
-        self.Es = Es
-        self.b = b
-        self.h = h
-        self.section = section
-        self.stirrup = stirrup
+class MaterialProperties:
+    def __init__(self, fc, fv, fy, Es):
+        self.fc = fc  # Concrete compressive strength (MPa)
+        self.fv = fv  # Steel yield strength (MPa) of round bar
+        self.fy = fy  # Steel yield strength (MPa) of deform bar
+        self.Es = Es  # Steel elastic modulus (MPa)
+
+    def εy(self):
+        return self.fy / self.Es  # Yield strain
 
     def beta_one(self):
+        """
+        Calculate the β1 factor based on fc.
+        """
         if self.fc <= 30:  # N/mm2(MPa)
-            β1 = 0.85
+            return 0.85
         elif 30 < self.fc < 55:  # N/mm2
-            β1 = 0.85 - 0.05 * (self.fc - 30) / 7
+            return 0.85 - 0.05 * (self.fc - 30) / 7
         else:
-            β1 = 0.65
-        self.β1 = β1
+            return 0.65
 
-    # Effective depth
-    def effective_depth(self, main_dia, traverse_dia, covering=4.5):  # cm
-        self.d2 = covering + traverse_dia + main_dia / 2
-        self.d = self.h - covering - traverse_dia - main_dia / 2
-        print(f"d = {self.d:.2f} cm, d' = {self.d2:.2f} cm")
 
-    # Percent Reinforcement
-    def percent_reinforcment(self, Ast, An, Ag):
-        ρg = Ast / Ag
-        if 0.01 < ρg < 0.08:
-            print(f"Main reinforcement: ρg = 0.01 < {ρg:.4f} < 0.08  OK ")
-        else:
-            print(
-                f"Main reinforcement: ρg = {ρg:.4f} out of range [0.01, 0.08]--> Used 0.01"
-            )
-            ρg = 0.01
+class SectionGeometry:
+    def __init__(self) -> None:
+        pass
 
-        self.ρg = ρg
+    def rectangle(self, b, h):
+        self.shape = "rectangle"
+        self.b = b  # Column width (cm)
+        self.h = h  # Column height (cm)
 
-    def traverse(self, An, Ag, main_dia, traverse_dia):
-        if self.stirrup == "spiral":
-            ρ_spiral = 0.45 * (Ag / An - 1) * self.fc / self.fy
+    def circular(self, diameter):
+        self.shape = "circle"
+        self.b = diameter  # Column width (cm)
+        self.h = diameter  # Column height (cm)
 
-            print(f"Spiral traverse: ρ = {ρ_spiral:.4f}")
-            print("Spacing : 25mm < s < 80mm")
 
-        if self.stirrup == "tie":
-            s = min(16 * main_dia, 48 * traverse_dia, self.b)
-            print(f"Tie traverse: spacing required = {s:.2f} cm")
+class Reinforcement:
+    def __init__(self, main_dia, traverse_dia, N):
+        self.main_dia = main_dia  # main reinforcement (mm)
+        self.traverse_dia = traverse_dia  # traverse reinforcement (mm)
+        self.N = N  # number 0f main reinforcement
 
-    # Safety factor, 𝜙c
-    def 𝜙x(self, c):
+
+class SectionProperties:
+    def __init__(self, geometry, reinforcement):
+        self.geometry = geometry
+        self.reinforcement = reinforcement
+
+    def effective_depth(self, covering=4.5):
         """
-        c : distance from top to nuetral axis
+        Calculate effective depth (d) and effective cover (d_prime).
+        covering: float, optional
+            Concrete cover in cm (default: 4.5 cm).
+        Returns:
+            tuple: (d, d_prime) in cm.
         """
-        if self.stirrup == "tie":
-            self.𝜙c = 0.65 + 0.25 * ((1 / c / self.d) - 5 / 3)  # tie
-        else:
-            self.𝜙c = 0.75 + 0.15 * ((1 / c / self.d) - 5 / 3)  # spiral
+        d_prime = (
+            covering
+            + self.reinforcement.traverse_dia / 10
+            + self.reinforcement.main_dia / 20  # Divide by 20 for radius
+        )
+        d = (
+            self.geometry.h
+            - covering
+            - self.reinforcement.traverse_dia / 10
+            - self.reinforcement.main_dia / 20
+        )
+        print(f"d = {d:.2f} cm, d' = {d_prime:.2f} cm")
+        return d, d_prime
 
-    # Initial column section properties
-    def initialize(self, main_dia, traverse_dia, Ast, An, Ag):
-        self.beta_one()
-        self.effective_depth(main_dia, traverse_dia, covering=4.5)
-        self.percent_reinforcment(Ast, An, Ag)
+    def section_area(self):
+        """
+        Calculate gross section area (Ag), net area (An), and reinforcement area (Ast).
+        Returns:
+            tuple: (Ag, Ast, An) in cm^2.
+        """
+        if self.geometry.shape == "circle":
+            Ag = np.pi * (self.geometry.b**2) / 4
+            Ast = (
+                self.reinforcement.N
+                * np.pi
+                * ((self.reinforcement.main_dia / 10) ** 2)
+                / 4
+            )  # Reinforcement area, cm^2
+            An = Ag - Ast
+        else:
+            Ag = self.geometry.b * self.geometry.h  # Gross section area, cm^2
+            Ast = (
+                self.reinforcement.N
+                * np.pi
+                * ((self.reinforcement.main_dia / 10) ** 2)
+                / 4
+            )  # Reinforcement area, cm^2
+            An = Ag - Ast  # Net area, cm^2
+
+        return Ag, Ast, An
+
+    def validate_reinforcement_ratio(self):
+        """
+        Validate if the reinforcement ratio is within acceptable limits (0.01 <= rho_g <= 0.08).
+        Returns:
+            float: Validated reinforcement ratio.
+        Raises:
+            ValueError: If the reinforcement ratio is out of range.
+        """
+        Ag, Ast, _ = self.section_area()
+        rho_g = Ast / Ag
+        if 0.01 <= rho_g <= 0.08:
+            return rho_g
+        raise ValueError(
+            f"Reinforcement ratio {rho_g:.4f} is out of range. Valid range is 0.01 to 0.08."
+        )
+
+
+class StrengthCalculator:
+    def __init__(self, materials, geometry, reinforcement):
+        self.materials = materials
+        self.geometry = geometry
+        self.reinforcement = reinforcement
+
+    def calculate_phi_factor(self, d, c):
+        """
+        Calculate the strength reduction factor (φ) based on c and d.
+        c = nuetral axis from top edge of section
+        """
+        d_ratio = c / d
+        return 0.65 + 0.25 * (1 - 5 * d_ratio / 3)
 
     # Calculate stress for each rebar
-    def stress(self, df_rebars, c, label):
+    def calculate_stress(self, df_rebars, c):
+        """
+        Calculate the stress in each rebar.
+        """
         c = c * 10  # Convert to mm
         stresses = []
-        for i, row in df_rebars.iterrows():
+        for _, row in df_rebars.iterrows():
             z = row["z"] * 10  ## Convert to mm
-            if z > c:
-                fs = 0.003 * (z - c) * self.Es / c
-            elif z < c:
-                fs = -0.003 * (c - z) * self.Es / c
+            if z >= c:  #  + Tension area
+                strain = 0.003 * (z - c) / c
+                fs = strain * self.materials.Es
+            elif z < c:  # - Compression area
+                strain = -0.003 * (c - z) / c
+                fs = strain * self.materials.Es  #
             else:
-                fs = 0
+                fs = self.materials.fy
 
             # Check if absolute stress exceeds fy
-            if abs(fs) > self.fy:
-                fs = np.sign(fs) * self.fy  # Limit stress to fy
+            if abs(fs) > self.materials.fy:
+                fs = np.sign(fs) * self.materials.fy  # Limit stress to fy
             stresses.append(fs)
-        df_rebars[label] = stresses
+        df_rebars["stress"] = stresses  # MPa
         return df_rebars
 
-    # Calculate force for each rebar
-    def force(self, df_rebars, main_dia, stress_label, force_label):
-        rebar_area_mm2 = (
-            np.pi * (main_dia / 2) ** 2
-        )  # Cross-sectional area of rebar in mm^2
-        forces = []
-        for i, row in df_rebars.iterrows():
-            stress = row[stress_label]
-            if abs(stress) > self.fy:
-                stress = np.sign(stress) * self.fy  # Limit stress to fy
-            force = stress * rebar_area_mm2 * 1e-3  # Force in Newtons (kN)
-            forces.append(force)
-        df_rebars[force_label] = forces
+    def calculate_force(self, df_rebars):
+        """
+        Calculate the force in each rebar.
+        """
+        rebar_area = np.pi * (self.reinforcement.main_dia**2) / 4  # mm2
+        df_rebars["force"] = df_rebars["stress"] * rebar_area * 1e-3  # kN
         return df_rebars
 
-    # Calculated moment of section
-    def moment(self, df_rebars, force_label):
-        neutral_axis = (self.b / 100,)
-        moment = []
-        for i, row in df_rebars.iterrows():
-            z = row["z"] / 100  # Convert to m
-            F = row[force_label]
+    def calculate_moment(self, df_rebars, c):
+        """
+        Calculate the moment contribution from each rebar.
+        """
+        moments = [
+            abs(row["force"]) * abs(c - row["z"]) * 1e-2
+            for _, row in df_rebars.iterrows()
+        ]
+        return sum(moments)
 
-            if z < neutral_axis:
-                m = -F * (neutral_axis - z)  # counter clockwise
-            else:
-                m = F * (z - neutral_axis)  # counter clockwise
-            moment.append(m)
-
-        return sum(moment)
-
-    # Calculate 𝜙Pn, 𝜙Mn
-    def PnMn_calculation(self, c, a, main_dia, df, stress_label, force_label):
-        if self.section == "rect":
-            compression_area = self.b * a * 1e2
+    def calculate_pn_mn(self, d, c, a, df_rebars):
+        """
+        Calculate axial load (Pn) and moment (Mn) for a given neutral axis depth.
+        """
+        if self.geometry.shape == "circle":
+            comp_area = segment_area_above_line(self.geometry.b, a) * 1e2  # mm2
         else:
-            compression_area = segment_area_above_line(self.b, a) * 100  # mm2
+            comp_area = self.geometry.b * a * 1e2  # cm2 to mm2
 
-        self.𝜙x(c)  # set tie stirrup as defalt
+        Cc = 0.85 * self.materials.fc * comp_area * 1e-3  # Compression in concrete, kN
 
-        # Calculate stress of each rebars
-        df = self.stress(df, c, stress_label)
+        df_rebars = self.calculate_stress(df_rebars, c)
+        df_rebars = self.calculate_force(df_rebars)
 
-        # Calculate force of each rebars
-        df = self.force(df, main_dia, stress_label, force_label)
+        Cs, Ts = sum_separate(df_rebars, "force")
 
-        # Calculate axial force of section
-        Cc = -0.85 * self.fc * compression_area * 1e-3  # kN
-        Cs, Ts = sum_separate(df, force_label)
+        Pn = abs(-Cc + Cs + Ts)
+        Mc = Cc * (c - a / 2) * 1e-2
 
-        Pn = Cc + Cs + Ts
-        𝜙Pn = self.𝜙c * Pn
+        Ms = self.calculate_moment(df_rebars, c)
+        Mn = Mc + Ms
+        return (
+            self.calculate_phi_factor(d, c) * Pn,
+            self.calculate_phi_factor(d, c) * Mn,
+        )
 
-        # print(Cc, Cs, Ts, Pn, 𝜙Pn)
 
-        # Calculate moment
-        Mc = -Cc * (self.b / 2 - a / 2) * 1e-2  # counter clockwise
-        Ms = self.moment(df, force_label)  # kN-m
+class PnMnCalculator:
+    def __init__(self, materials, geometry, reinforcement, strength_calculator):
+        self.materials = materials
+        self.geometry = geometry
+        self.reinforcement = reinforcement
+        self.calculator = strength_calculator
 
-        𝜙Mn = self.𝜙c * (Ms + Mc)  # numpy array
+        self.β1 = materials.beta_one()
+        self.εy = materials.εy()
 
-        return 𝜙Pn, 𝜙Mn[0], df
+    def pure_compression(self, An, Ast):
+        P0 = (
+            0.85 * self.materials.fc * An * 1e2 + self.materials.fy * Ast * 1e2
+        ) * 1e-3  # kN
+        𝜙Pn = 0.65 * P0
+        𝜙Pn_max = 0.85 * P0
+        print(f"Pure Compression : 𝜙Pn = {𝜙Pn:.2f} kN")
+        return 𝜙Pn, 0  # kN, kN-m
 
-    ## Pure Compression, εc = 0
-    def pure_compression(self, Ast, An):
-        Ast = Ast * 100  # convert to mm2
-        An = An * 100  # convert to mm2
+    def pure_tension(self, Ast):
+        𝜙Pn = self.materials.fy * Ast * 1e-3
+        print(f"Pure Tension : 𝜙Pn = {𝜙Pn:.2f} kN")
+        return 𝜙Pn, 0  # kN, kN-m
 
-        P0 = -(0.85 * self.fc * An + self.fy * Ast) * 1e-3  # kN
-        𝜙Pn = 0.65 * P0  # kN
-        𝜙Pn_max = 0.85 * P0  # kN
+    def zero_tension(self, d, df):
+        c = d
+        a = self.β1 * c
+        # Placeholder for PnMn_calculation
+        𝜙Pn, 𝜙Mn = self.calculator.calculate_pn_mn(d, c, a, df)
+        print(f"Zero Tension : 𝜙Pn, 𝜙Mn = {𝜙Pn:.2f} kN, {𝜙Mn:.2f} kN-m")
+        display_table(df)
+        return 𝜙Pn, 𝜙Mn
 
-        return 𝜙Pn, 𝜙Pn_max
+    def balance(self, d, df):
+        c = 0.003 * d / (0.003 + self.εy)
+        a = self.β1 * c
+        # Placeholder for PnMn_calculation
+        𝜙Pn, 𝜙Mn = self.calculator.calculate_pn_mn(d, c, a, df)
+        print(f"Balance : 𝜙Pn, 𝜙Mn = {𝜙Pn:.2f} kN, {𝜙Mn:.2f} kN-m")
+        display_table(df)
+        return 𝜙Pn, 𝜙Mn
 
-    #  Zero Tension
-    def zero_tension(self, main_dia, df):
-        """
-        εcu = 0.003
-        εs = 0
-        """
-        c = self.d  # cm
-        a = self.β1 * c  # cm
-        𝜙Pn, 𝜙Mn, df = self.PnMn_calculation(c, a, main_dia, df, "ft0", "Ft0")
-
-        return 𝜙Pn, 𝜙Mn, c
-
-    # Balance(fs = fy)
-    def balance(self, main_dia, df, rect=False):
-        """
-        εcu = 0.003
-        εs = εy
-        """
-        ey = self.fy / self.Es  # bottom rebar strain
-        c = 0.003 * self.d / (0.003 + ey)
-        a = self.β1 * c  # cm
-        𝜙Pn, 𝜙Mn, df = self.PnMn_calculation(c, a, main_dia, df, "fb", "Fb")
-
-        return 𝜙Pn, 𝜙Mn, c
-
-    # Pure Bending
-    def pure_bending(self, main_dia, df):
+    def pure_bending(self, d, d_prime, df):
         """
         εcu = 0.003
         Pu = 0
         """
         # Try c
-        c = self.d2  # cm
-
-        nuetral_axis = [c]
-        axial = []
-        moment = []
-
+        c = d_prime  # cm
         while True:
             a = self.β1 * c  # cm
-
-            temp = [0]
-            𝜙Pn, 𝜙Mn, df = self.PnMn_calculation(c, a, main_dia, df, "fm", "Fm")
+            𝜙Pn, 𝜙Mn = self.calculator.calculate_pn_mn(d, c, a, df)
             if 𝜙Pn <= 0:
                 break
-            elif 𝜙Pn > temp[-1]:
-                c += 1  # Neutal axis < d2
             else:
-                c -= 1  # Neutal axis > d2
-            temp.append(𝜙Pn)
-
-            nuetral_axis.append(c)
-            axial.append(𝜙Pn)
-            moment.append(𝜙Mn)
-
+                c += 1
+        print(
+            f"Pure Bending : 𝜙Pn, 𝜙Mn = 0 kN, {-𝜙Mn:.2f} kN-m"
+        )  # Force moment to +value
         display_table(df)
+        return 0, -𝜙Mn  # Force moment to +value
 
-        return 𝜙Pn, 𝜙Mn, c
 
-    ## Pure Tension
-    def pure_tension(self, As):
-        return -self.fy * As * 1e-3
+class ForceInSection:
+    def __init__(self, materials, geometry, reinforcement, force):
+        self.materials = materials
+        self.geometry = geometry
+        self.reinforcement = reinforcement
+        self.force = force
+
+    def section_properties(self):
+        prop = SectionProperties(self.geometry, self.reinforcement)
+        self.Ag, self.Ast, self.An = prop.section_area()
+        self.d, self.d_prime = prop.effective_depth()
+
+    def compute_pure_compression(self):
+        return self.force.pure_compression(self.An, self.Ast)
+
+    def compute_pure_tension(self):
+        return self.force.pure_tension(self.Ast)
+
+    def compute_zero_tension(self, df):
+        return self.force.zero_tension(self.d, df)
+
+    def compute_balance(self, df):
+        return self.force.balance(self.d, df)
+
+    def compute_pure_bending(self, df):
+        return self.force.pure_bending(self.d, self.d_prime, df)

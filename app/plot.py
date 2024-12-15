@@ -141,6 +141,96 @@ class Plot:
 
         return fig
 
+    def plot_circular_section(self, diameter, main_dia, N, c, context):
+        x_outer = context["x_outer"]
+        y_outer = context["y_outer"]
+        x_inner = context["x_inner"]
+        y_inner = context["y_inner"]
+        x_traverse = context["x_traverse"]
+        y_traverse = context["y_traverse"]
+        x_rebar = context["x_rebar"]
+        y_rebar = context["y_rebar"]
+
+        # Create the plot
+        fig = go.Figure()
+
+        # Determine colors for rebars based on their position relative to the NA
+        rebar_colors = ["red" if y > 0 else "blue" for y in y_rebar]
+
+        # Add the solid circle for the column
+        fig.add_trace(
+            go.Scatter(
+                x=x_outer,
+                y=y_outer,
+                mode="lines",
+                fill="toself",
+                fillcolor="lightgrey",
+                line=dict(color="grey"),
+                name="Column Section",
+            ),
+        )
+
+        # Add the dotted circle for the covering
+        fig.add_trace(
+            go.Scatter(
+                x=x_inner,
+                y=y_inner,
+                mode="lines",
+                line=dict(color="green", width=2),
+                name="Covering",
+            ),
+        )
+
+        # Add the dotted circle for traverse
+        fig.add_trace(
+            go.Scatter(
+                x=x_traverse,
+                y=y_traverse,
+                mode="lines",
+                line=dict(color="green", width=2),
+                name="Covering",
+            ),
+        )
+
+        # Add the neutral axis (NA) as a horizontal green dotted line
+        fig.add_trace(
+            go.Scatter(
+                x=[-diameter / 2, diameter / 2],
+                y=[c - c, c - c],
+                mode="lines",
+                line=dict(color="green", dash="dot"),
+                name="Neutral Axis",
+            ),
+        )
+
+        # Add the dots for the rebars with colors based on their position relative to the NA
+        fig.add_trace(
+            go.Scatter(
+                x=x_rebar,
+                y=y_rebar,
+                mode="markers+text",
+                marker=dict(color=rebar_colors, size=main_dia * 5),
+                text=[str(i) for i in range(1, N + 1)],
+                textposition="top right",
+                name="Rebars",
+            ),
+        )
+
+        fig.update_layout(
+            title=f"{N}-Dia{main_dia*10:.0f}mm",
+            xaxis_title="X (cm)",
+            yaxis_title="Y (cm)",
+            showlegend=False,  # To avoid duplicate legends
+            width=500,
+            height=500,
+        )
+
+        # Update layout to ensure correct aspect ratio
+        fig.update_xaxes(scaleanchor="y", scaleratio=1)
+        fig.update_yaxes(scaleanchor="x", scaleratio=1)
+
+        return fig
+
     def IR_diagram(self, x, y, Pu, Mu, title):
 
         fig = go.Figure()
